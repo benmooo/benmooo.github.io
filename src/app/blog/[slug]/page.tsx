@@ -6,23 +6,25 @@ import { notFound } from "next/navigation";
 
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import remarkCodeTitles from "remark-code-title";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
+import rehypeHighlightCodeLines from "rehype-highlight-code-lines";
 
 import "@/styles/highlight-js/tokyo-night-dark.css";
 import "katex/dist/katex.min.css";
 
 const options = {
   mdxOptions: {
-    remarkPlugins: [remarkGfm, remarkMath],
-    rehypePlugins: [rehypeKatex, rehypeHighlight],
+    remarkPlugins: [remarkGfm, remarkCodeTitles, remarkMath],
+    rehypePlugins: [rehypeKatex, rehypeHighlight, rehypeHighlightCodeLines],
   },
 };
 
 interface BlogPostProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 interface FrontMatter {
@@ -64,7 +66,8 @@ async function getBlogPost(slug: string) {
 }
 
 export default async function BlogPost({ params }: BlogPostProps) {
-  const post = await getBlogPost(params.slug);
+  const { slug } = await params;
+  const post = await getBlogPost(slug);
 
   if (!post) {
     notFound();
@@ -73,7 +76,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
   const { frontmatter, content } = post;
 
   return (
-    <article className="max-w-2xl mx-auto px-4 py-8">
+    <article className="max-w-2xl mx-auto px-4 py-8 bg-slate-300/10">
       <header className="mb-8">
         <h1 className="text-4xl font-bold mb-4">{frontmatter.title}</h1>
         <p className="text-gray-600">发布时间: {frontmatter.date.toString()}</p>
@@ -92,7 +95,8 @@ export default async function BlogPost({ params }: BlogPostProps) {
 }
 
 export async function generateMetadata({ params }: BlogPostProps) {
-  const post = await getBlogPost(params.slug);
+  const { slug } = await params;
+  const post = await getBlogPost(slug);
 
   if (!post) {
     return {
