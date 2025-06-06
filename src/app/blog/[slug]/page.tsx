@@ -138,7 +138,7 @@ export default async function BlogPost({ params }: BlogPostProps) {
           {/* Content */}
           <article
             className={cn(
-              "max-w-none prose prose-pink prose-img:rounded-lg prose-video:rounded-lg dark:prose-invert",
+              "max-w-none prose prose-pink prose-img:rounded-lg prose-video:rounded-lg dark:prose-invert prose-a:text-foreground prose-a:decoration-6 prose-a:-underline-offset-2 prose-a:decoration-pink-300",
               {
                 "font-serif leading-relaxed prose-p:indent-6 prose-headings:font-sans":
                   frontmatter.tags?.includes("随笔"),
