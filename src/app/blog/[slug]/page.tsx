@@ -4,7 +4,6 @@ import path from "path";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -18,6 +17,7 @@ import "katex/dist/katex.min.css";
 import { Frontmatter } from "@/types/blog";
 import { cn } from "@/utils";
 import { BiliBili } from "@/components/bilibili";
+import { ImageWithFallback } from "@/components/image-with-fallback";
 
 const options = {
   mdxOptions: {
@@ -81,13 +81,14 @@ export default async function BlogPost({ params }: BlogPostProps) {
           {/* Cover Image */}
           {frontmatter.image && (
             <div className="relative w-full h-64 md:h-96 mb-8 rounded-lg overflow-hidden">
-              <Image
+              <ImageWithFallback
                 src={frontmatter.image}
                 alt={frontmatter.title}
                 fill
                 sizes="width: 100vw; height: auto"
                 className="object-cover"
                 priority
+                fallbackSrc="/missing-image.svg"
               />
             </div>
           )}
