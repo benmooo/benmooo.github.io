@@ -13,6 +13,7 @@
     "@mdx-js/react": "^3.1.0",
     "@next/mdx": "^15.3.3",
     "@types/mdx": "^2.0.13",
+    "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
     "katex": "^0.16.22",
     "next": "15.3.3",
@@ -24,7 +25,8 @@
     "rehype-katex": "^7.0.1",
     "remark-code-title": "^0.2.5",
     "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
