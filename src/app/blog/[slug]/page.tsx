@@ -9,20 +9,25 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import remarkCodeTitles from "remark-code-title";
 import rehypeKatex from "rehype-katex";
-import rehypeHighlight from "rehype-highlight";
-import rehypeHighlightCodeLines from "rehype-highlight-code-lines";
+import rehypePrettyCode from "rehype-pretty-code";
+// import { transformerCopyButton } from "@rehype-pretty/transformers";
 
-import "@/styles/highlight-js/tokyo-night-dark.css";
+import "@/styles/rehype-pretty-code.css";
 import "katex/dist/katex.min.css";
 import { Frontmatter } from "@/types/blog";
 import { cn } from "@/utils";
 import { BiliBili } from "@/components/bilibili";
 import { ImageWithFallback } from "@/components/image-with-fallback";
 
+// const rehypePrettyCodeOptions = {};
 const options = {
   mdxOptions: {
     remarkPlugins: [remarkGfm, remarkCodeTitles, remarkMath],
-    rehypePlugins: [rehypeKatex, rehypeHighlight, rehypeHighlightCodeLines],
+    rehypePlugins: [
+      rehypeKatex,
+      rehypePrettyCode,
+      // [transformerCopyButton],
+    ],
   },
 };
 

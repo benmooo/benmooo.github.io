@@ -1,0 +1,121 @@
+---
+title: "从Provider到Riverpod：我们为什么要重构状态管理体系"
+description: "一个技术团队的状态管理升级决策全记录"
+date: 2024-11-28
+tags: ["Flutter", "StateManagement", "Riverpod", "Provider"]
+draft: false
+image: "/state_management_migration.jpg"
+keywords: ["Provider迁移", "Riverpod优势", "Flutter架构"]
+---
+
+### 缘起：当Provider成为瓶颈
+
+#### 1. 手工依赖地狱
+
+```dart
+// 订单模块的依赖声明
+MultiProvider(
+  providers: [
+    Provider<AuthService>(create: (_) => AuthService()),
+    ProxyProvider<AuthService, TechnicianRepository>...,
+    ProxyProvider<TechnicianRepository, DispatchService>...,
+    ProxyProvider<DispatchService, OrderViewModel>...,
+    ...etc.
+  ],
+  child: const App()
+)
+```
+
+每次新增服务类型都需要修改这个庞大的依赖树
+
+2. 类型安全缺失
+
+```dart
+context.read<OrderModel>().assignTechnician(patientInfo); // 运行时崩溃
+// 本应传入TechnicianModel却误传PatientModel
+```
+
+3. 状态同步延迟
+
+```dart
+class OrderViewModel extends ChangeNotifier {
+  Future<void> refreshOrders() async {
+    _orders = await repo.fetchEmergencyOrders();
+    notifyListeners(); // 需要手动触发
+  }
+}
+```
+
+技师端和派单员的视图状态经常不一致，导致重复派单。
+
+4. 缓存策略缺失
+
+```dart
+class CaseRepository {
+  Future<CaseDetail> getCase(String id) async {
+    // 每次都重新请求
+    return api.get('/cases/$id');
+  }
+}
+```
+
+### 为什么选择Riverpod
+
+新的方案必须满足:
+
+- automatic dependency injection
+- type checking in compile time
+- declarative without boilerplate and life cycle management
+- mechanism to cache data and invalidation
+
+Riverpod完美匹配这些需求：
+
+1. 自动依赖图谱
+
+```dart
+final technicianProvider = FutureProvider((ref) async {
+  return ref.watch(authProvider).requireRole('technician');
+});
+
+final dispatchProvider = StateNotifierProvider<DispatchNotifier, DispatchState>((ref) {
+  return DispatchNotifier(ref.watch(technicianProvider));
+});
+```
+
+2. 编译时安全
+
+```dart
+ref.read(orderProvider.notifier).assignCase(technician);
+// 如果technician类型不匹配，IDE立即报错
+```
+
+3. 响应式状态
+
+```dart
+@riverpod
+class OrderTracking extends _$OrderTracking {
+  @override
+  Stream<OrderStatus> build(String orderId) {
+    return ref.watch(orderRepoProvider).subscribeToUpdates(orderId);
+  }
+}
+```
+
+4. 内置缓存
+
+```dart
+@riverpod
+Future<CaseDetail> caseDetail(CaseDetailRef ref, String caseId) async {
+  // 自动缓存病例数据
+  return ref.watch(caseRepoProvider).getDetail(caseId);
+}
+```
+
+### 总结
+
+从手动依赖注入, bulky dependencies declaration -> 依赖关系自动管理 离散的状态定义
+
+- 开发体验好：新增功能不再需要到处手动注册依赖、思考 provider 的生命周期。
+- 模块边界更清晰：Riverpod 的 provider 是声明即依赖
+- 状态的表达更具语义性：每一个状态 provider 就像是一个逻辑单元，天然具有响应式和生命周期意识。
+- 减少 bug 与调试时间：编译期的类型检查和依赖追踪让我们更快发现问题
