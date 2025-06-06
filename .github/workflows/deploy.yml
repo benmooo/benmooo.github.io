@@ -7,6 +7,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # 授予写入仓库内容的权限，这通常包含了推送分支的权限
+      pages: write # 授予写入 GitHub Pages 的权限
+      id-token: write # 对于使用 OIDC (OpenID Connect) 的部署
+
     steps:
       - uses: actions/checkout@v4
 
