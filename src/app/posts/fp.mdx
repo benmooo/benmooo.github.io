@@ -1,0 +1,251 @@
+---
+title: "函数式编程：高维度业务建模的数学工具"
+description: "Describing what you want, not how to get it."
+date: "2024-06-13"
+tags: ["Functional Programming", "fp-ts"]
+image: "/fp.png"
+draft: false
+keywords:
+  [
+    "函数式编程",
+    "Functional Programming",
+    "fp-ts",
+    "TypeScript",
+    "纯函数",
+    "函数组合",
+    "数据导向",
+    "高阶函数",
+    "惰性求值",
+    "Either",
+    "TaskEither",
+    "Monad",
+  ]
+category: "Programming"
+readingTime: "15 min"
+lastModified: "2024-12-19"
+---
+
+### 高维度的业务建模工具
+
+个人体会:
+
+从工程学的角度 它给我的感觉是可以让我们在一个高维度的业务(问题)层面 通过灵活的组合函数 让我们方便的规划业务运算蓝图 同时因为它独特的组合属性 让我们无意识的想要写模块化的函数和高阶函数 方便我们抽象 组合和重构 此外，代码会因抽象而更贴近业务 富有表现力
+
+先看个小例子(基于fp-ts):
+
+```typescript
+// 纯谓词函数
+const isValidSize =
+  (maxSize: number) =>
+  (file: FileData): boolean =>
+    file.size <= maxSize;
+
+const isValidType =
+  (allowedTypes: string[]) =>
+  (file: FileData): boolean =>
+    allowedTypes.includes(file.type);
+
+// 提升到 Either 上下文
+const validateSize = (maxSize: number) =>
+  E.fromPredicate(isValidSize(maxSize), () => `文件大小超过 ${maxSize} bytes`);
+
+const validateType = (allowedTypes: string[]) =>
+  E.fromPredicate(
+    isValidType(allowedTypes),
+    (file) => `不支持的文件类型: ${file.type}`,
+  );
+
+const uploadToServer = (file: FileData) =>
+  TE.tryCatch(
+    () => fetch("/upload", { method: "POST", body: file }),
+    (error) => `上传失败: ${error}`,
+  );
+
+// 文件上传管道 -- 业务建模
+const uploadFile = flow(
+  validateSize(5 * 1024 * 1024), // 5MB限制
+  E.flatMap(validateType(["image/jpeg", "image/png"])),
+  TE.fromEither,
+  TE.flatMap(uploadToServer),
+  // etc...
+);
+```
+
+---
+
+### 函数一等公民 (First-Class Functions)
+
+函数在函数式编程中享有与其他数据类型同等的地位，可以被：
+
+- 作为参数传递
+- 作为返回值
+- 赋值给变量
+- 存储在数据结构中
+
+```javascript
+// 函数作为一等公民的实例
+const add = (x, y) => x + y;
+const multiply = (x, y) => x * y;
+
+// 高阶函数：接受函数作为参数
+const operate = (fn, a, b) => fn(a, b);
+
+const result1 = operate(add, 3, 4); // 7
+const result2 = operate(multiply, 3, 4); // 12
+```
+
+### 纯函数 (Pure Functions)
+
+纯函数满足两个关键特性：
+
+1. **引用透明性**：相同输入总是产生相同输出
+2. **无副作用**：不修改外部状态
+
+```javascript
+// 纯函数
+const pure = (x, y) => x + y;
+
+// 非纯函数（有副作用）
+let counter = 0;
+const impure = (x) => {
+  counter++; // 副作用
+  return x + counter;
+};
+```
+
+**优势**：
+
+- 可测试性强
+- 并发安全
+- 可缓存（记忆化）
+- 易于推理和调试
+
+### 声明式而非命令式 (Declarative vs Imperative)
+
+声明式编程关注**what**（要什么结果），命令式编程关注**how**（如何实现）。
+
+$$
+\text{Imperative}: \sum_{i=0}^{n} \text{step}_i
+$$
+
+$$
+\text{Declarative}: \text{map}(f) \circ \text{filter}(p) \circ \text{reduce}(g)
+$$
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+
+// 命令式：描述如何做
+let result = [];
+for (let i = 0; i < numbers.length; i++) {
+  if (numbers[i] % 2 === 0) {
+    result.push(numbers[i] * 2);
+  }
+}
+
+// 声明式：描述要什么
+const result = numbers
+  .filter((n) => n % 2 === 0) // 筛选偶数
+  .map((n) => n * 2); // 乘以2
+```
+
+### Composition (函数组合)
+
+函数组合是函数式编程的核心，通过组合简单函数构建复杂逻辑。
+
+```javascript
+// 基础函数
+const add1 = (x) => x + 1;
+const multiply2 = (x) => x * 2;
+const square = (x) => x * x;
+
+// 函数组合
+const compose =
+  (...fns) =>
+  (x) =>
+    fns.reduceRight((acc, fn) => fn(acc), x);
+
+const complexOperation = compose(square, multiply2, add1);
+// 相当于: x => square(multiply2(add1(x)))
+
+console.log(complexOperation(3)); // (3+1)*2^2 = 64
+```
+
+**优势**：
+
+- 代码重用性
+- 模块化设计
+- 易于测试
+
+### Lazy Evaluation (惰性求值)
+
+惰性求值延迟计算直到真正需要结果，提高性能并支持无限数据结构。
+
+```javascript
+// 惰性序列生成器
+function* fibonacci() {
+  let [a, b] = [0, 1];
+  while (true) {
+    yield a;
+    [a, b] = [b, a + b];
+  }
+}
+
+const fib = fibonacci();
+console.log(fib.next().value); // 0
+console.log(fib.next().value); // 1
+console.log(fib.next().value); // 1
+
+// 惰性操作链
+const lazyPipeline = (data) => ({
+  map: (fn) => lazyPipeline(data.map(fn)),
+  filter: (pred) => lazyPipeline(data.filter(pred)),
+  take: (n) => data.slice(0, n),
+  value: () => data,
+});
+
+const result = lazyPipeline([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  .filter((x) => x % 2 === 0)
+  .map((x) => x * x)
+  .take(3); // 只计算前3个结果
+```
+
+### DO (Data Oriented) 数据导向
+
+数据导向设计将数据结构作为程序设计的核心，函数围绕数据变换进行组织。
+
+核心理念：
+
+$$
+\text{Program} = \text{Data} + \text{Transformations}
+$$
+
+数据流模型：
+
+$$
+D_0 \xrightarrow{f_1} D_1 \xrightarrow{f_2} D_2 \xrightarrow{f_3} \cdots \xrightarrow{f_n} D_n
+$$
+
+**DO的优势**：
+
+- 数据和逻辑分离
+- 易于并行处理
+- 缓存友好
+- 测试简单
+- 可视化数据流
+
+---
+
+Now Fomulate:
+
+$$
+FP = \mathcal{C} \circ \mathcal{L} \circ \sum_{i=1}^n f_{\text{pure}}(D_i) \circ \mathcal{T}
+$$
+
+where：
+
+- $\mathcal{C}$: 组合算子 (Composition)
+- $\mathcal{L}$: 惰性求值算子 (Lazy Evaluation)
+- $f_{\text{pure}}$: 纯函数集合 (Pure Functions)
+- $D_i$: 数据流 (Data Oriented)
+- $\mathcal{T}$: 类型系统约束 (Type System)
