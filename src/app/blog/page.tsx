@@ -26,6 +26,7 @@ async function getBlogPosts(): Promise<BlogPost[]> {
         frontmatter: frontmatter as BlogPost["frontmatter"],
       };
     })
+    .filter((post) => !post.frontmatter.draft)
     .sort(
       (a, b) =>
         new Date(b.frontmatter.date).getTime() -
