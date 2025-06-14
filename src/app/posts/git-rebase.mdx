@@ -1,0 +1,341 @@
+---
+title: "Git Rebase：重写历史的艺术"
+description: "从工作流角度深入理解 Git Rebase 的工作原理、使用场景和最佳实践"
+date: "2022-12-19"
+tags: ["git", "rebase", "工作流", "代码管理"]
+image: "/git-rebase.png"
+draft: false
+keywords:
+  [
+    "Git Rebase",
+    "Git Merge",
+    "版本控制",
+    "Git 工作流",
+    "代码管理",
+    "分支管理",
+    "Git 历史",
+    "交互式 Rebase",
+    "Squash",
+    "Cherry-pick",
+  ]
+category: "Development"
+readingTime: "15 min"
+lastModified: "2024-12-19"
+---
+
+### Pre
+
+面对大量的 Pull Request，我最害怕看到的就是充满无意义 merge commit 的混乱历史——"Merge branch 'fix-typo' into main"、"Merge pull request #123"这样的提交信息毫无价值，却污染了整个项目历史。更糟糕的是，当我们需要追踪某个功能的演进过程或定位 bug 引入的时间点时，这种蜘蛛网状的分支结构让代码考古变成了噩梦。
+
+我希望项目的每个功能都是**线性增加**的——当我查看 `git log --oneline` 时，应该能清晰地看到每个功能从无到有的完整演进：用户认证模块、购物车功能、支付集成，每个功能都像书的章节一样有序排列。我希望每个 commit 都有明确的职责，每个 PR 合并后都不会破坏主分支的整洁性。这不仅仅是为了美观，更是为了项目的长期可维护性——rebase 让我们能够构建一个真正专业的、企业级的代码仓库。
+
+今天，我想从工作流的角度，梳理下我对 Git Rebase 的理解和实践经验。
+
+### Git Rebase 是什么？
+
+$$
+\text{Rebase}: C_1 \rightarrow C_2 \rightarrow C_3 \xrightarrow{\text{base change}} C_1' \rightarrow C_2' \rightarrow C_3'
+$$
+
+其中：
+
+- $C_i$ 是原始提交
+- $C_i'$ 是重新基于新 base 的提交
+- base change 是变基操作
+
+#### 核心概念
+
+**Rebase 本质上是将一系列提交从一个分支"移植"到另一个分支上**，就像给树木换土壤一样：
+
+```bash
+# 原始状态
+      A---B---C topic
+     /
+D---E---F---G master
+
+# rebase 后
+              A'--B'--C' topic
+             /
+D---E---F---G master
+```
+
+关键点：
+
+- 提交 A、B、C 被"重新播放"到 G 上
+- 生成了新的提交 A'、B'、C'（不同的 SHA）
+- 原来的 A、B、C 会被丢弃
+
+### Rebase vs Merge：两种哲学的碰撞
+
+在我的工作经验中，选择 Rebase 还是 Merge 往往反映了团队的代码管理哲学：
+
+#### Merge 的世界观：保持真实
+
+```bash
+# Merge 操作
+git checkout master
+git merge feature-branch
+
+# 结果：
+      A---B---C feature
+     /         \
+D---E---F---G---H master
+```
+
+**Merge 的优势**：
+
+- 保留了真实的开发历史
+- 显示了分支的并行开发过程
+- 操作安全，不会丢失信息
+- 适合公共分支
+
+#### Rebase 的世界观：追求完美
+
+```bash
+# Rebase 操作
+git checkout feature-branch
+git rebase master
+
+# 结果：
+D---E---F---G---A'---B'---C' feature
+                            \
+                             master
+```
+
+**Rebase 的优势**：
+
+- 线性历史，更清晰易读
+- 没有不必要的 merge commit
+- 便于代码审查和问题追踪
+- 适合私有分支
+
+### 实际工作流中的 Rebase 应用
+
+#### 1. Feature Branch 工作流
+
+这是我最常用的 rebase 场景：
+
+```bash
+# 1. 创建功能分支
+git checkout -b feature/user-authentication
+
+# 2. 在功能分支上开发
+git add .
+git commit -m "Add login form"
+git commit -m "Implement password validation"
+git commit -m "Add user session management"
+
+# 3. 主分支可能有新的更新
+git checkout main
+git pull origin main
+
+# 4. 将功能分支 rebase 到最新的主分支
+git checkout feature/user-authentication
+git rebase main
+```
+
+**为什么这样做？**
+
+- 确保功能分支基于最新的主分支
+- 避免不必要的 merge commit
+- 让 PR 历史更清晰
+
+#### 2. 交互式 Rebase：代码历史的艺术
+
+这是我最喜欢的 rebase 功能：
+
+```bash
+# 交互式 rebase 最近 3 个提交
+git rebase -i HEAD~3
+```
+
+交互式 rebase 的编辑器界面：
+
+```
+pick 1234567 Add login form
+pick 2345678 Fix typo in login form
+pick 3456789 Add password validation
+
+# Commands:
+# p, pick = use commit
+# r, reword = use commit, but edit the commit message
+# e, edit = use commit, but stop for amending
+# s, squash = use commit, but meld into previous commit
+# f, fixup = like "squash", but discard this commit's log message
+```
+
+**常用操作**：
+
+1. **Squash 提交**：合并多个小提交
+
+```
+pick 1234567 Add login form
+squash 2345678 Fix typo in login form
+pick 3456789 Add password validation
+```
+
+2. **重新排序提交**：
+
+```
+pick 3456789 Add password validation
+pick 1234567 Add login form
+```
+
+3. **编辑提交信息**：
+
+```
+pick 1234567 Add login form
+reword 2345678 Fix typo in login form
+```
+
+#### 3. 团队协作中的 Rebase 策略
+
+在我的团队中，我们采用以下 rebase 策略：
+
+**私有分支自由 rebase**：
+
+```bash
+# 在个人功能分支上，可以随意 rebase
+git rebase -i HEAD~5  # 整理最近 5 个提交
+git push --force-with-lease origin feature-branch
+```
+
+**公共分支禁止 rebase**：
+
+```bash
+# 在 main/develop 分支上，禁止 rebase
+# 只允许 merge 操作
+git checkout main
+git merge --no-ff feature-branch
+```
+
+### 我的 Rebase 最佳实践
+
+#### 1. 黄金法则：不要 rebase 公共分支
+
+```bash
+# ❌ 危险操作
+git checkout main
+git rebase feature-branch  # 永远不要这样做！
+
+# ✅ 正确操作
+git checkout feature-branch
+git rebase main
+```
+
+#### 2. 使用 --force-with-lease 而不是 --force
+
+```bash
+# ❌ 危险的强制推送
+git push --force origin feature-branch
+
+# ✅ 安全的强制推送
+git push --force-with-lease origin feature-branch
+```
+
+`--force-with-lease` 会检查远程分支是否有其他人的提交，避免覆盖他人的工作。
+
+#### 3. Rebase 前先备份
+
+```bash
+# 创建备份分支
+git branch feature-backup
+git rebase main
+# 如果出错，可以回到备份
+git reset --hard feature-backup
+```
+
+#### 4. 使用 --autosquash 自动整理提交
+
+```bash
+# 创建 fixup 提交
+git commit --fixup=<commit-hash>
+
+# 自动整理
+git rebase -i --autosquash HEAD~10
+```
+
+### 复杂场景的 Rebase 技巧
+
+#### 1. 解决 Rebase 冲突
+
+```bash
+# 开始 rebase
+git rebase main
+
+# 如果遇到冲突
+# 1. 解决冲突文件
+# 2. 添加解决后的文件
+git add .
+# 3. 继续 rebase
+git rebase --continue
+
+# 如果想放弃 rebase
+git rebase --abort
+```
+
+#### 2. 从另一个分支 cherry-pick 提交
+
+```bash
+# 将特定提交应用到当前分支
+git cherry-pick <commit-hash>
+
+# 批量 cherry-pick
+git cherry-pick A..B
+```
+
+#### 3. 分离特定文件的历史
+
+```bash
+# 只 rebase 涉及特定文件的提交
+git rebase -i --exec="git show --name-only HEAD | grep -q 'specific-file.js' || git reset --soft HEAD^" HEAD~10
+```
+
+### 工作流实例：完整的 Feature 开发
+
+让我用一个完整的例子来展示 rebase 在实际工作流中的应用：
+
+```bash
+# 1. 创建功能分支
+git checkout -b feature/shopping-cart
+git push -u origin feature/shopping-cart
+
+# 2. 开发过程中的多次提交
+git commit -m "Add shopping cart model"
+git commit -m "WIP: cart UI components"
+git commit -m "Fix cart calculation bug"
+git commit -m "Add cart item validation"
+git commit -m "Update cart UI styling"
+
+# 3. 主分支有新更新，需要同步
+git fetch origin
+git rebase origin/main
+
+# 4. 整理提交历史
+git rebase -i HEAD~5
+# 将 WIP 提交 squash 到前一个提交
+# 将 bug fix 提交 fixup 到相关提交
+
+# 5. 最终推送
+git push --force-with-lease origin feature/shopping-cart
+
+# 6. 创建 PR，历史清晰简洁
+```
+
+### 什么时候选择 Rebase vs Merge？
+
+我的决策矩阵：
+
+| 场景                | 选择   | 原因           |
+| ------------------- | ------ | -------------- |
+| 个人功能分支 → main | Rebase | 保持线性历史   |
+| 长期功能分支 → main | Merge  | 保留开发上下文 |
+| 紧急修复 → main     | Rebase | 快速清晰       |
+| 发布分支 → main     | Merge  | 标记发布点     |
+| 协作功能分支        | Merge  | 避免冲突       |
+
+### 总结
+
+1. **Rebase 是一种代码美学**：它追求完美的提交历史，就像优秀的代码追求清晰的逻辑一样。
+
+2. **Rebase 是一种责任感**：整理提交历史是对团队负责，让代码审查更高效。
