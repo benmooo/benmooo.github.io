@@ -1,0 +1,208 @@
+---
+title: "函数式编程实现ABAC：关于DentFlex的权限控制"
+date: "2025-1-12"
+description: "探讨如何用函数式编程思维重新审视ABAC访问控制"
+tags: ["ABAC", "FP", "权限控制"]
+category: "技术实践"
+featured: true
+---
+
+最近在开发DentFlex项目时，遇到了典型的权限控制场景。这是一个为即时义齿服务设计的数字平台，涉及牙科诊所、技师、服务协调员等多个角色，需要对外派服务订单、财务报表等资源进行精细化访问控制。
+
+在传统的牙科义齿制作流程中，当患者需要种植牙时，牙医必须先拔除剩余牙齿并植入基台。在这个过渡期间，制造商会派遣技师提供即时临时义齿制作服务。过去这种协调主要依赖微信等非正式沟通渠道，效率低下且容易出错。
+
+DentFlex要解决的就是这种混乱的协调问题。但随之而来的权限控制需求让我重新思考了ABAC的实现方式。
+
+## 复杂的权限需求
+
+在即时义齿服务场景中，权限控制远比简单的角色分配复杂：
+
+- **牙科诊所**可以创建服务请求，查看自己的订单状态，但不能修改已派发的订单
+- **技师**可以接受指派，更新服务进度，上传完成照片，但只能操作分配给自己的订单
+- **服务协调员**可以分配技师，修改订单状态，查看所有财务数据，但某些操作需要在工作时间内进行
+- **制造商管理员**拥有最高权限，但对敏感财务数据的访问需要额外验证
+
+传统的RBAC显然不够用。权限不仅取决于用户角色，还与订单状态、时间、地理位置等多种因素相关。比如技师只能在订单状态为"已派发"时接受任务，服务协调员只能在工作时间调整高优先级订单。
+
+## 重新审视ABAC的本质
+
+看了一圈现有的ABAC实现方案，那些PIP、PDP、PEP组件让人眼花缭乱，静下心来想想，ABAC的核心其实很简单：
+
+```
+决策 = f(用户属性, 资源属性, 环境属性, 操作属性)
+```
+
+这是一个纯函数，输入明确，输出确定，没有副作用。既然如此，为什么不直接用函数式编程来实现？
+
+传统的组件化方式把这个简单的函数拆成了若干个类和接口，然后再把它们组合起来。就像把一个完整的服务订单切成片，装进不同的盒子里，最后再拼回去。
+
+## 属性收集：管道代替组件
+
+在传统ABAC中，PIP（策略信息点）负责收集属性。用函数式思维，这就是一个数据转换管道：
+
+```dart
+Future<Attributes> collectServiceOrderAttributes(
+  User user,
+  ServiceOrder order
+) async {
+  return {}
+    .withUser(user)
+    .withServiceOrder(order)
+    .withTimeContext()
+    .withLocationContext();
+}
+```
+
+每个步骤都是一个纯函数，接收属性字典，返回增强后的字典。就像流水线一样，数据流经每个工站，逐步被加工完善。
+
+在DentFlex中，我们需要根据用户角色、订单状态、服务时间、技师位置等因素来决定权限。这些属性散布在不同的数据源中，用管道模式可以优雅地组合它们：
+
+```dart
+extension AttributePipeline on Map<String, dynamic> {
+  Map<String, dynamic> withUserRole(User user) => {
+    ...this,
+    'user.role': user.role, // 'clinic', 'technician', 'coordinator', 'admin'
+    'user.region': user.assignedRegion,
+    'user.certification': user.certificationLevel,
+  };
+
+  Map<String, dynamic> withServiceOrder(ServiceOrder order) => {
+    ...this,
+    'order.status': order.status, // 'pending', 'assigned', 'in_progress', 'completed'
+    'order.priority': order.priority,
+    'order.clinic_id': order.clinicId,
+    'order.assigned_technician': order.assignedTechnicianId,
+    'order.created_at': order.createdAt,
+  };
+
+  Map<String, dynamic> withTimeContext() => {
+    ...this,
+    'time.hour': DateTime.now().hour,
+    'time.is_working_hours': _isWorkingHours(),
+    'time.is_emergency_period': _isEmergencyPeriod(),
+  };
+}
+```
+
+## 策略即函数
+
+在即时义齿服务中，业务规则可以直接用函数表达：
+
+```dart
+// 基础策略函数
+bool isOrderOwner(Attributes attrs) =>
+  attrs['user.role'] == 'clinic' &&
+  attrs['user.clinic_id'] == attrs['order.clinic_id'];
+
+bool isAssignedTechnician(Attributes attrs) =>
+  attrs['user.role'] == 'technician' &&
+  attrs['user.id'] == attrs['order.assigned_technician'];
+
+bool canModifyDuringWorkHours(Attributes attrs) =>
+  attrs['time.is_working_hours'] ||
+  attrs['order.priority'] == 'emergency';
+
+bool isOrderInValidState(String requiredState) => (Attributes attrs) =>
+  attrs['order.status'] == requiredState;
+
+// 组合策略
+final canEditServiceOrder = allOf([
+  anyOf([
+    isOrderOwner,
+    allOf([
+      (attrs) => attrs['user.role'] == 'coordinator',
+      canModifyDuringWorkHours,
+    ]),
+  ]),
+  isOrderInValidState('pending'),
+]);
+
+final canAssignTechnician = allOf([
+  (attrs) => attrs['user.role'] == 'coordinator',
+  isOrderInValidState('pending'),
+  canModifyDuringWorkHours,
+]);
+
+final canUpdateProgress = allOf([
+  isAssignedTechnician,
+  anyOf([
+    isOrderInValidState('assigned'),
+    isOrderInValidState('in_progress'),
+  ]),
+]);
+```
+
+在DentFlex项目中，这些规则直接反映了业务需求：诊所只能编辑自己创建的待处理订单，技师只能更新分配给自己的订单进度，协调员可以在工作时间内分配技师。
+
+## 柯里化：固化常用检查
+
+当我们有了通用的决策函数：
+
+```dart
+Future<(bool, String)> evaluate(
+  Type resourceType,
+  String action,
+  Attributes attrs
+) async { ... }
+```
+
+可以通过柯里化创建业务语义明确的检查函数：
+
+```dart
+final canEditServiceOrder = (Attributes attrs) =>
+  evaluate(ServiceOrder, 'edit', attrs);
+
+final canAssignTechnician = (Attributes attrs) =>
+  evaluate(ServiceOrder, 'assign_technician', attrs);
+
+final canViewFinancialReport = (Attributes attrs) =>
+  evaluate(FinancialReport, 'view', attrs);
+
+final canShareOrderDetails = (Attributes attrs) =>
+  evaluate(ServiceOrder, 'share', attrs);
+```
+
+这就像数学中的偏微分，固定部分变量，得到更简洁的函数形式。在处理即时义齿服务的各种操作时，调用者只需关心当前的属性上下文，而不用每次都指定资源类型和操作。
+
+## 摆脱组件的束缚
+
+传统ABAC架构中的PIP、PDP、PEP组件在函数式实现中自然融合：
+
+- **PIP** 变成了属性收集管道，从用户、订单、时间、地理位置等维度收集决策所需信息
+- **PDP** 变成了策略函数组合，直接表达"技师只能操作分配给自己的订单"这类业务规则
+- **PEP** 变成了权限检查的高阶函数，在UI层面控制按钮显示和操作权限
+
+组件边界消失了，但功能一个不少。就像即时义齿服务中的信息流，不再需要通过微信群这样的中介，直接在平台上流转，反而更加高效。
+
+## 实际效果
+
+在DentFlex项目中，这种实现方式带来了意想不到的好处：
+
+**代码更简洁**。订单状态变更、技师分配、进度更新等权限检查从原来的复杂配置缩减到一行函数调用。
+
+**测试更容易**。每个策略函数都是纯函数，可以轻松验证"在非工作时间，协调员无法分配非紧急订单"这类业务规则。
+
+**扩展更灵活**。当我们需要支持新的订单类型（比如种植牙修复服务），只需添加对应的策略函数，不需要修改任何现有代码。
+
+**调试更清晰**。可以清楚地看到为什么某个技师无法接受特定订单，或者为什么诊所无法修改已派发的订单。
+
+## 何时选择函数式ABAC
+
+并非所有场景都适合这种方式。如果你的系统已经有成熟的权限框架，或者需要复杂的审计和状态管理，传统组件化可能更合适。
+
+但如果你在构建新系统，特别是涉及多角色协作的服务平台，函数式实现值得考虑。尤其是在以下场景：
+
+- 权限规则与业务状态紧密相关（如订单状态、服务时间）
+- 多种角色需要灵活的权限组合
+- 系统需要快速响应业务规则变化
+- 团队更习惯声明式编程风格
+
+## 结语
+
+回头看这个实现，有趣的是它并没有试图解决所有可能的权限控制问题。它只是忠实地映射了业务逻辑：订单有状态，用户有角色，操作有约束。函数式编程恰好提供了一种直接的表达方式。
+
+传统ABAC架构的组件划分可能源于对复杂性的恐惧——通过明确的边界来控制不确定性。但在实际应用中，这些边界往往变成了束缚。函数组合的方式更像是数学证明：每一步都可以独立验证，整体逻辑自然呈现。
+
+在DentFlex项目中，200行代码覆盖了所有权限场景。这个数字本身并不重要，重要的是代码的意图和实际功能之间几乎没有认知负担。当业务人员说"技师只能操作分配给自己的订单"时，代码中就有一个叫`isAssignedTechnician`的函数。
+
+这种对应关系的建立，或许比任何架构模式都更有价值。毕竟，软件的最终目的是让复杂的现实世界变得可操作，而不是让操作变得复杂。
