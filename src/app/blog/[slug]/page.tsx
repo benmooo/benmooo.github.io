@@ -91,7 +91,8 @@ export default async function BlogPost({ params }: BlogPostProps) {
                 alt={frontmatter.title}
                 fill
                 sizes="width: 100vw; height: auto"
-                className="object-cover dark:invert"
+                // className="object-cover dark:invert"
+                className="object-cover"
                 priority
                 fallbackSrc="/missing-image.svg"
               />
