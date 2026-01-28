@@ -1,6 +1,6 @@
 ---
 title: "fp-ts 进阶指南：深度解析 tap 系列副作用函数"
-date: "2024-05-20"
+date: "2026-01-28"
 description: "深入探讨 fp-ts 中 TaskEither 的 tap 系列函数，解析其核心逻辑、不同变体的应用场景，并对比 tap 与 chain 在语义化及铁路导轨模型中的差异。"
 tags: ["TypeScript", "fp-ts", "函数式编程"]
 category: "技术分享"
@@ -9,26 +9,27 @@ featured: true
 
 > 本文旨在解析 fp-ts 库中 `tap` 系列函数的核心逻辑。通过对比 `tap`、`tapIO`、`tapTask` 等不同变体，阐述如何在保持数据流向不变的前提下，优雅地处理同步或异步的副作用，并重点分析了 `tapError` 在错误处理路径中的控制权。
 
+
 ### tap 系列函数的核心逻辑都是：“偷看一眼，做点副业，原样返回”。
 
-tap 全家桶对比表, 假设我们当前的操作流是一个 TaskEither<E, A>：
+tap 全家桶对比表, 假设我们当前的操作流是一个 TaskEither\<E, A\>：
 
 | 函数名称  | 针对对象       | 传入函数返回类型           | 核心用途                                                             |
 | :-------- | :------------- | :------------------------- | :------------------------------------------------------------------- |
-| tap       | Right (成功值) | (a: A) => TaskEither<E, Z> | 最通用。执行异步操作（如存入数据库），若副作用失败，流程也转为失败。 |
-| tapIO     | Right (成功值) | (a: A) => IO<Z>            | 执行同步副作用（如 console.log、修改全局变量）。                     |
-| tapTask   | Right (成功值) | (a: A) => Task<Z>          | 执行必定成功的异步副作用（如发送不关结果的统计埋点）。               |
-| tapEither | Right (成功值) | (a: A) => Either<E, Z>     | 执行同步但可能失败的检查（如简单的参数校验）。                       |
-| tapError  | Left (错误值)  | (e: E) => TaskEither<E, Z> | 针对错误执行副作用（如记录错误日志）。                               |
+| tap       | Right (成功值) | (a: A) => TaskEither\<E, A\> | 最通用。执行异步操作（如存入数据库），若副作用失败，流程也转为失败。 |
+| tapIO     | Right (成功值) | (a: A) => IO\<A\>            | 执行同步副作用（如 console.log、修改全局变量）。                     |
+| tapTask   | Right (成功值) | (a: A) => Task\<A\>          | 执行必定成功的异步副作用（如发送不关结果的统计埋点）。               |
+| tapEither | Right (成功值) | (a: A) => Either\<E, A\>     | 执行同步但可能失败的检查（如简单的参数校验）。                       |
+| tapError  | Left (错误值)  | (e: E) => TaskEither\<E, A\> | 针对错误执行副作用（如记录错误日志）。                               |
 
-谁会中断流程
+### 谁会中断流程
 
 | 函数      | 类型             | 异步？ | 会中断主流程吗？ | 适用场景                     |
 | :-------- | :--------------- | :----- | :--------------- | :--------------------------- |
-| tapIO     | IO<A>            | 否     | 不会             | 写日志、读本地配置           |
-| tapEither | Either<E, A>     | 否     | 会 (若返回 Left) | 同步校验、业务规则检查       |
-| tapTask   | Task<A>          | 是     | 不会             | 后台统计、非关键性通知       |
-| tap       | TaskEither<E, A> | 是     | 会 (若返回 Left) | 存数据库、调用第三方支付 API |
+| tapIO     | IO\<A\>            | 否     | 不会             | 写日志、读本地配置           |
+| tapEither | Either\<E, A\>     | 否     | 会 (若返回 Left) | 同步校验、业务规则检查       |
+| tapTask   | Task\<A\>          | 是     | 不会             | 后台统计、非关键性通知       |
+| tap       | TaskEither\<E, A\> | 是     | 会 (若返回 Left) | 存数据库、调用第三方支付 API |
 
 Q: 为什么tapError要返回 TaskEither， 为什么不能像tapTask那样?
 
@@ -45,7 +46,7 @@ A: 这里有一个微妙的逻辑：tapError 虽然不能把“失败”变回�
 - 保持原样：如果日志记录成功，传出的依然是原始的“数据库连接失败”。
 - 替换错误：如果日志记录也失败了，可以选择抛出一个更严重的错误（例如：数据库失败且日志系统宕机）。
 
-Q: 像tapEither 和tap 即tapTaskEither，他们返回Either<E,A> 或者TaskEither<E,A>, 都可以中断业务流程 那我们为什么不直接通过flatMap 或者chainW 来把它chain到进主流程呢， 该如何理解呢 ?
+Q: 像tapEither和tap即tapTaskEither, 他们返回Either\<E\,A\> 或者TaskEither\<E\,A\>, 都可以中断业务流程 那我们为什么不直接通过flatMap 或者chainW 来把它chain到进主流程呢, 该如何理解呢?
 
 A: 简单直接的答案是：语义化（Semantics） 和 代码组合性（Composability）
 
