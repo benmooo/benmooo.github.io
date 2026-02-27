@@ -73,7 +73,7 @@ export function TableOfContents() {
       <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
         目录
       </h2>
-      <ul className="space-y-2 text-sm">
+      <ul className="space-y-2 text-xs">
         {headings.map((heading) => (
           <li
             key={heading.id}
