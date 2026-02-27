@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import Link from "next/link";
 import { BlogPost } from "@/types/blog";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 async function getBlogPosts(): Promise<BlogPost[]> {
   const postsDir = path.join(process.cwd(), "src/app/posts");
@@ -44,12 +45,15 @@ export default async function BlogIndex() {
       <div className="max-w-4xl mx-auto px-8 py-12">
         {/* Header */}
         <header className="mb-12">
-          <Link
-            href="/"
-            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors mb-8"
-          >
-            ← 返回
-          </Link>
+          <div className="flex items-center justify-between mb-8">
+            <Link
+              href="/"
+              className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+            >
+              ← 返回
+            </Link>
+            <ThemeToggle />
+          </div>
           <h1 className="text-4xl font-serif text-gray-800 dark:text-gray-200 mb-4">
             Write to Think
           </h1>

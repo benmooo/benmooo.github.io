@@ -18,6 +18,7 @@ import { Frontmatter } from "@/types/blog";
 import { cn } from "@/utils";
 import { BiliBili } from "@/components/bilibili";
 import { ImageWithFallback } from "@/components/image-with-fallback";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 // const rehypePrettyCodeOptions = {};
 const options = {
@@ -82,6 +83,17 @@ export default async function BlogPost({ params }: BlogPostProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-2xl mx-auto px-4 py-12">
+        {/* Back Link and Theme Toggle */}
+        <div className="flex items-center justify-between mb-8">
+          <Link
+            href="/blog"
+            className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          >
+            ← 返回博客
+          </Link>
+          <ThemeToggle />
+        </div>
+
         <article>
           {/* Cover Image */}
           {frontmatter.image && (

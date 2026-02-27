@@ -1,9 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Theme Toggle - Fixed Position */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Main Container */}
       <div className="block md:flex min-h-screen">
         {/* Left Side - Conceptual Sketch */}
