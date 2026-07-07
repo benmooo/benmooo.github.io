@@ -28,6 +28,7 @@
 .nitro/
 .output/
 .tmp/
+.content-collections/
 
 # debug
 npm-debug.log*

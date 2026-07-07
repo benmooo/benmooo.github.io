@@ -1,5 +1,10 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    ".content-collections/generated/**/*.d.ts"
+  ],
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
@@ -14,7 +19,8 @@
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "content-collections": ["./.content-collections/generated/index"]
     },
     "noEmit": true
   }
