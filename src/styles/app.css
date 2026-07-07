@@ -1,10 +1,12 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --canvas: #f4efe8;
   --paper: #fbf8f3;
   --ink: #1f140f;
   --muted: #6f625a;
+  --accent: #7c443e;
 }
 
 * {

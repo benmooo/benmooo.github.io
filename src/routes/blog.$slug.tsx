@@ -1,28 +1,30 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+
+import { PostArticle } from "~/components/post-article";
+import { fetchPost } from "~/lib/posts-api";
+import { seo } from "~/lib/seo";
 
 export const Route = createFileRoute("/blog/$slug")({
-  component: BlogPostPlaceholder,
+  loader: ({ params }) => fetchPost({ data: params.slug }),
+  head: ({ loaderData }) => {
+    if (!loaderData) {
+      return {};
+    }
+
+    return {
+      meta: seo({
+        title: `${loaderData.title} | 格物致知`,
+        description: loaderData.description ?? loaderData.excerpt,
+        image: loaderData.image,
+        keywords: loaderData.keywords.join(", "),
+      }),
+    };
+  },
+  component: BlogPostPage,
 });
 
-function BlogPostPlaceholder() {
-  const { slug } = Route.useParams();
+function BlogPostPage() {
+  const post = Route.useLoaderData();
 
-  return (
-    <section className="mx-auto max-w-4xl px-6 py-16">
-      <Link
-        to="/blog"
-        className="text-sm uppercase tracking-[0.32em] text-[var(--muted)] transition hover:text-[var(--ink)]"
-      >
-        Back to archive
-      </Link>
-      <h1 className="mt-8 max-w-3xl font-serif text-5xl leading-tight text-[var(--ink)]">
-        Post route scaffold for <span className="italic">{slug}</span>
-      </h1>
-      <p className="mt-8 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-        The typed MDX content pipeline and the dual-mode article renderer land in
-        the next commits. This placeholder keeps the app buildable during the
-        framework cutover.
-      </p>
-    </section>
-  );
+  return <PostArticle post={post} />;
 }

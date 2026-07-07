@@ -2,9 +2,14 @@ import { allPosts } from "content-collections";
 
 export type Post = (typeof allPosts)[number];
 
+export type PostSummary = Pick<
+  Post,
+  "slug" | "title" | "description" | "date" | "tags" | "year" | "isEssay"
+>;
+
 export type PostsByYear = {
   year: number;
-  posts: Post[];
+  posts: PostSummary[];
 };
 
 const compareByDateDesc = (left: Post, right: Post) =>
@@ -18,8 +23,21 @@ export const listPublishedPosts = () =>
 export const getPostBySlug = (slug: string) =>
   listPublishedPosts().find((post) => post.slug === slug);
 
+const toPostSummary = (post: Post): PostSummary => ({
+  slug: post.slug,
+  title: post.title,
+  description: post.description,
+  date: post.date,
+  tags: post.tags,
+  year: post.year,
+  isEssay: post.isEssay,
+});
+
+export const listPublishedPostSummaries = () =>
+  listPublishedPosts().map(toPostSummary);
+
 export const listPostsByYear = (): PostsByYear[] => {
-  const groups = listPublishedPosts().reduce<Map<number, Post[]>>(
+  const groups = listPublishedPostSummaries().reduce<Map<number, PostSummary[]>>(
     (accumulator, post) => {
       const group = accumulator.get(post.year) ?? [];
 
@@ -35,3 +53,5 @@ export const listPostsByYear = (): PostsByYear[] => {
       posts,
     }));
 };
+
+export const listPostSummariesByYear = listPostsByYear;

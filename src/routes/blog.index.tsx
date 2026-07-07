@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { ArchiveList } from "~/components/archive-list";
-import { listPostsByYear } from "~/lib/posts";
+import { fetchArchiveGroups } from "~/lib/posts-api";
 
 export const Route = createFileRoute("/blog/")({
+  loader: () => fetchArchiveGroups(),
   component: BlogIndexPage,
 });
 
 function BlogIndexPage() {
-  const groups = listPostsByYear();
+  const groups = Route.useLoaderData();
 
   return (
     <section className="mx-auto max-w-5xl px-6 py-16 md:py-24">
