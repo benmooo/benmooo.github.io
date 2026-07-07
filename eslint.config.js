@@ -6,7 +6,6 @@ export default tseslint.config(
   {
     ignores: [
       ".nitro/**",
-      ".next/**",
       ".output/**",
       "out/**",
       ".superpowers/**",
