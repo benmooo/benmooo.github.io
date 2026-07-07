@@ -5,7 +5,7 @@ import { siteConfig } from "~/lib/site-config";
 
 const navItems = [
   { to: "/", label: "Home" },
-  { to: "/blog", label: "Archive" },
+  { to: "/blog", label: "Write to Think" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
 ] as const;
@@ -46,7 +46,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-black/5">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-[var(--muted)] md:flex-row md:items-center md:justify-between">
           <p>{siteConfig.description}</p>
-          <p>TanStack Start rewrite in progress.</p>
+          <p>Write to think. Read to refine.</p>
         </div>
       </footer>
     </div>
