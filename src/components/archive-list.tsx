@@ -6,59 +6,88 @@ type ArchiveListProps = {
   groups: PostsByYear[];
 };
 
+const getYearHeadingId = (year: number) => `archive-year-${year}`;
+
 export function ArchiveList({ groups }: ArchiveListProps) {
   return (
-    <div className="space-y-16">
-      {groups.map((group) => (
-        <section key={group.year} className="grid gap-8 md:grid-cols-[96px_1fr]">
-          <div className="pt-2 text-sm tracking-[0.24em] text-[var(--muted)]">
-            {group.year}
-          </div>
+    <div
+      data-archive-timeline="true"
+      className="relative mx-auto max-w-3xl before:absolute before:bottom-0 before:left-[0.56rem] before:top-0 before:w-px before:bg-[var(--border)] before:content-[''] md:before:left-[0.68rem]"
+    >
+      <div className="space-y-12">
+        {groups.map((group) => {
+          const headingId = getYearHeadingId(group.year);
 
-          <div className="space-y-8">
-            {group.posts.map((post) => (
-              <article
-                key={post.slug}
-                className="border-t border-[var(--border)] pt-6 first:border-t-0 first:pt-0"
+          return (
+            <section
+              key={group.year}
+              data-archive-year={group.year}
+              aria-labelledby={headingId}
+              className="relative pl-8 md:pl-11"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-0 h-[1.125rem] w-[1.125rem] rounded-full border border-[var(--accent)] bg-[var(--canvas)] md:left-[0.12rem]"
+              />
+              <h2
+                id={headingId}
+                className="text-xs tracking-[0.2em] text-[var(--muted)]"
               >
-                <div className="grid gap-3 md:grid-cols-[110px_1fr] md:items-start">
-                  <p className="text-sm text-[var(--muted)]">
-                    {formatPostDate(post.date)}
-                  </p>
+                {group.year}
+              </h2>
 
-                  <div className="space-y-3">
-                    <a
-                      href={`/blog/${post.slug}`}
-                      className="block font-serif text-xl leading-tight text-[var(--ink)] transition hover:text-[var(--accent)]"
-                    >
-                      {post.title}
-                    </a>
+              <div className="mt-4">
+                {group.posts.map((post) => (
+                  <article
+                    key={post.slug}
+                    data-archive-entry={post.slug}
+                    className="relative border-t border-[var(--border)] py-6 first:border-t-0 first:pt-0"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="absolute -left-[1.67rem] top-8 h-1.5 w-1.5 rounded-full bg-[var(--accent)] md:-left-[2.1rem]"
+                    />
+
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                      <h3 className="font-serif text-xl leading-tight text-[var(--ink)]">
+                        <a
+                          href={`/blog/${post.slug}`}
+                          className="transition hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
+                        >
+                          {post.title}
+                        </a>
+                      </h3>
+                      <time
+                        dateTime={post.date}
+                        className="shrink-0 text-xs tracking-[0.08em] text-[var(--muted)]"
+                      >
+                        {formatPostDate(post.date)}
+                      </time>
+                    </header>
 
                     {post.description ? (
-                      <p className="max-w-2xl text-base leading-7 text-[var(--muted)]">
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
                         {post.description}
                       </p>
                     ) : null}
 
                     {post.tags.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                      <ul
+                        aria-label={`${post.title} tags`}
+                        className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] uppercase tracking-[0.14em] text-[var(--muted)]"
+                      >
                         {post.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-[var(--border)] px-3 py-1"
-                          >
-                            {tag}
-                          </span>
+                          <li key={tag}>{tag}</li>
                         ))}
-                      </div>
+                      </ul>
                     ) : null}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      ))}
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
