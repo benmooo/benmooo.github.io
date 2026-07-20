@@ -55,7 +55,7 @@ export function PostArticle({ post }: PostArticleProps) {
               ))}
             </div>
 
-            <h1 className="font-serif text-4xl leading-tight md:text-6xl">
+            <h1 className="font-serif text-3xl leading-tight md:text-5xl">
               {post.title}
             </h1>
 
@@ -63,8 +63,8 @@ export function PostArticle({ post }: PostArticleProps) {
               <p
                 className={
                   post.isEssay
-                    ? "max-w-2xl text-lg leading-8 text-[#f0d8d4]"
-                    : "max-w-2xl text-lg leading-8 text-[var(--muted)]"
+                    ? "max-w-2xl text-base leading-7 text-[#f0d8d4]"
+                    : "max-w-2xl text-base leading-7 text-[var(--muted)]"
                 }
               >
                 {post.description}
@@ -105,8 +105,8 @@ export function PostArticle({ post }: PostArticleProps) {
           <div
             className={
               post.isEssay
-                ? "prose prose-lg mt-14 max-w-none prose-headings:font-serif prose-headings:text-[#fff7f5] prose-p:text-[#f8efed] prose-p:leading-9 prose-strong:text-[#fff7f5] prose-a:text-[#ffd2cb] prose-blockquote:border-[#d08a82] prose-code:text-[#fff7f5] prose-pre:bg-black/30 prose-img:rounded-[1.5rem]"
-                : "prose prose-lg mt-14 max-w-none prose-headings:font-serif prose-p:text-[var(--ink)] prose-p:leading-8 prose-strong:text-[var(--ink)] prose-a:text-[var(--ink)] prose-a:decoration-[#ccb3ab] prose-blockquote:border-[var(--muted)] prose-code:text-[var(--ink)] prose-pre:bg-[#221f1c] prose-img:rounded-[1.5rem]"
+                ? "prose prose-base mt-14 max-w-none prose-headings:font-serif prose-headings:text-[#fff7f5] prose-p:text-[#f8efed] prose-p:leading-8 prose-strong:text-[#fff7f5] prose-a:text-[#ffd2cb] prose-blockquote:border-[#d08a82] prose-code:text-[#fff7f5] prose-pre:bg-black/30 prose-img:rounded-[1.5rem]"
+                : "prose prose-base mt-14 max-w-none prose-headings:font-serif prose-p:text-[var(--ink)] prose-p:leading-8 prose-strong:text-[var(--ink)] prose-a:text-[var(--ink)] prose-a:decoration-[#ccb3ab] prose-blockquote:border-[var(--muted)] prose-code:text-[var(--ink)] prose-pre:bg-[#221f1c] prose-img:rounded-[1.5rem]"
             }
           >
             <MDXContent code={post.mdx} components={mdxComponents} />
