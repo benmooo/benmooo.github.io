@@ -47,7 +47,7 @@ export function PostArticle({ post }: PostArticleProps) {
                   className={
                     post.isEssay
                       ? "rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[#ddb3ae]"
-                      : "rounded-full border border-black/8 px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]"
+                      : "rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]"
                   }
                 >
                   {tag}
@@ -96,7 +96,7 @@ export function PostArticle({ post }: PostArticleProps) {
                 <img
                   src={post.image}
                   alt={post.title}
-                  className="w-full rounded-[2rem] border border-black/8 object-cover shadow-[0_24px_64px_rgba(18,18,18,0.12)]"
+                  className="w-full rounded-[2rem] border border-[var(--border)] object-cover shadow-[0_24px_64px_var(--shadow)]"
                 />
               )}
             </div>

@@ -22,7 +22,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           onClick={() => {
             router.invalidate();
           }}
-          className="rounded-full border border-black/10 bg-[var(--paper)] px-4 py-2 text-sm text-[var(--ink)] transition hover:border-black/20 hover:bg-white"
+          className="rounded-full border border-[var(--border)] bg-[var(--paper)] px-4 py-2 text-sm text-[var(--ink)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)]"
         >
           Try again
         </button>

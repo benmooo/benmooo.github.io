@@ -19,7 +19,7 @@ export function PostTableOfContents({
       className={
         tone === "essay"
           ? "hidden lg:block lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-auto lg:border-l lg:border-white/8 lg:pl-6"
-          : "hidden lg:block lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-auto lg:border-l lg:border-black/8 lg:pl-6"
+          : "hidden lg:block lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-auto lg:border-l lg:border-[var(--border)] lg:pl-6"
       }
     >
       <p

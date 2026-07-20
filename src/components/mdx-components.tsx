@@ -13,7 +13,7 @@ function StandardImage(props: ComponentPropsWithoutRef<"img">) {
     <img
       {...props}
       alt={props.alt ?? ""}
-      className="my-10 w-full rounded-[1.5rem] border border-black/8 bg-white object-cover shadow-[0_18px_48px_rgba(18,18,18,0.08)]"
+      className="my-10 w-full rounded-[1.5rem] border border-[var(--border)] bg-[var(--paper)] object-cover shadow-[0_18px_48px_var(--shadow)]"
     />
   );
 }

@@ -19,7 +19,7 @@ export function ArchiveList({ groups }: ArchiveListProps) {
             {group.posts.map((post) => (
               <article
                 key={post.slug}
-                className="border-t border-black/8 pt-6 first:border-t-0 first:pt-0"
+                className="border-t border-[var(--border)] pt-6 first:border-t-0 first:pt-0"
               >
                 <div className="grid gap-3 md:grid-cols-[110px_1fr] md:items-start">
                   <p className="text-sm text-[var(--muted)]">
@@ -29,7 +29,7 @@ export function ArchiveList({ groups }: ArchiveListProps) {
                   <div className="space-y-3">
                     <a
                       href={`/blog/${post.slug}`}
-                      className="block font-serif text-2xl leading-tight text-[var(--ink)] transition hover:text-[var(--accent)]"
+                      className="block font-serif text-xl leading-tight text-[var(--ink)] transition hover:text-[var(--accent)]"
                     >
                       {post.title}
                     </a>
@@ -45,7 +45,7 @@ export function ArchiveList({ groups }: ArchiveListProps) {
                         {post.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded-full border border-black/8 px-3 py-1"
+                            className="rounded-full border border-[var(--border)] px-3 py-1"
                           >
                             {tag}
                           </span>

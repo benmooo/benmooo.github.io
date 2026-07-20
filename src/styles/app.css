@@ -2,11 +2,30 @@
 @plugin "@tailwindcss/typography";
 
 :root {
+  color-scheme: light dark;
   --canvas: #f4efe8;
   --paper: #fbf8f3;
   --ink: #1f140f;
   --muted: #6f625a;
   --accent: #7c443e;
+  --border: rgba(31, 20, 15, 0.08);
+  --border-strong: rgba(31, 20, 15, 0.16);
+  --surface-hover: rgba(31, 20, 15, 0.05);
+  --shadow: rgba(31, 20, 15, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #181412;
+    --paper: #211c18;
+    --ink: #f4ece2;
+    --muted: #c2b6ab;
+    --accent: #e3a69b;
+    --border: rgba(244, 236, 226, 0.14);
+    --border-strong: rgba(244, 236, 226, 0.24);
+    --surface-hover: rgba(244, 236, 226, 0.08);
+    --shadow: rgba(0, 0, 0, 0.28);
+  }
 }
 
 * {

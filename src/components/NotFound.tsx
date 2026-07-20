@@ -12,7 +12,7 @@ export function NotFound({ children }: { children?: React.ReactNode }) {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => window.history.back()}
-          className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-[var(--ink)] transition hover:border-black/20"
+          className="rounded-full border border-[var(--border)] bg-[var(--paper)] px-4 py-2 text-sm text-[var(--ink)] transition hover:border-[var(--border-strong)]"
         >
           Go back
         </button>
