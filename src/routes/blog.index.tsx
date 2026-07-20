@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { ArchiveList } from "~/components/archive-list";
 import { fetchArchiveGroups } from "~/lib/posts-api";
+import type { PostsByYear } from "~/lib/posts";
 
 export const Route = createFileRoute("/blog/")({
   loader: () => fetchArchiveGroups(),
@@ -11,20 +12,33 @@ export const Route = createFileRoute("/blog/")({
 function BlogIndexPage() {
   const groups = Route.useLoaderData();
 
-  return (
-    <section className="mx-auto max-w-5xl px-6 py-16 md:py-24">
-      <p className="mb-4 text-sm uppercase tracking-[0.32em] text-[var(--muted)]">
-        Archive
-      </p>
-      <h1 className="max-w-3xl font-serif text-4xl leading-tight text-[var(--ink)] md:text-5xl">
-        Write to Think
-      </h1>
-      <p className="mt-6 max-w-2xl text-base leading-7 text-[var(--muted)]">
-        Notes on engineering, systems, games, and the occasional essay that
-        wants a slower rhythm.
-      </p>
+  return <ArchivePage groups={groups} />;
+}
 
-      <div className="mt-14">
+type ArchivePageProps = {
+  groups: PostsByYear[];
+};
+
+export function ArchivePage({ groups }: ArchivePageProps) {
+  return (
+    <section className="mx-auto max-w-4xl px-6 py-16 md:py-20">
+      <header
+        data-archive-introduction="true"
+        className="mx-auto max-w-2xl text-center"
+      >
+        <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
+          Collected writings
+        </p>
+        <h1 className="mt-5 font-serif text-4xl leading-[1.1] text-[var(--ink)] md:text-5xl">
+          Write to Think
+        </h1>
+        <p className="mx-auto mt-6 max-w-xl text-base leading-7 text-[var(--muted)]">
+          Notes on engineering, systems, games, and the occasional essay that
+          wants a slower rhythm.
+        </p>
+      </header>
+
+      <div className="mt-14 md:mt-16">
         <ArchiveList groups={groups} />
       </div>
     </section>
