@@ -81,7 +81,7 @@ The migration removed the legacy app's loaded `Noto Serif SC` font and its
 reflective-writing prose rules. The replacement follows the approved
 serif-only option:
 
-- ship a package-managed `Noto Serif SC` font as part of the TanStack build
+- load `Noto Serif SC` from the Google Fonts CSS API with `display=swap`
 - make it the dedicated reflective-writing font token while retaining the
   established site serif stack for standard content
 - apply the reflective font to `随笔` MDX prose and headings
@@ -139,6 +139,6 @@ post, and `/blog` over HTTP.
 - Every timeline post marker aligns to the first line of its title.
 - Technical and `随笔` post pages share the same canvas and standard semantic
   surrounding UI in both browser color schemes.
-- `随笔` prose uses the packaged Noto Serif SC treatment and first-line
+- `随笔` prose uses the Google Fonts Noto Serif SC treatment and first-line
   paragraph indentation, with serif headings.
 - `随笔` images retain their instant-photo treatment.

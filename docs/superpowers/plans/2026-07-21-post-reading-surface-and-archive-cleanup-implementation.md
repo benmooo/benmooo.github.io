@@ -17,7 +17,7 @@ reflective-only classes for `随笔`, while `PostTableOfContents` becomes a
 single semantic-token component.
 
 **Tech Stack:** TanStack Start, React 19, Content Collections MDX, Tailwind
-CSS v4, `@fontsource/noto-serif-sc`, Vitest, Testing Library
+CSS v4, Google Fonts CSS API, Vitest, Testing Library
 
 ---
 
@@ -36,7 +36,7 @@ CSS v4, `@fontsource/noto-serif-sc`, Vitest, Testing Library
   select reflective prose classes only for `随笔`
 - `src/components/post-table-of-contents.tsx` - remove visual-mode branches
   and consume semantic tokens
-- `src/styles/app.css` - register packaged Noto Serif SC and its dedicated
+- `src/styles/app.css` - register Google Fonts Noto Serif SC and its dedicated
   reflective typography token
 - `src/tests/posts.test.ts` - ensure archive summaries omit descriptions
 - `src/tests/archive-list.test.tsx` - lock description-free rows and the
@@ -44,8 +44,6 @@ CSS v4, `@fontsource/noto-serif-sc`, Vitest, Testing Library
 - `src/tests/post-article.test.tsx` - lock shared post surfaces and
   reflective prose markers
 - `src/tests/site-theme.test.ts` - lock the packaged reflective font token
-- `package.json` - record the font package dependency
-- `bun.lock` - lock the new dependency
 
 ## Task 1: Define the Description-Free Archive Contract
 
@@ -327,11 +325,9 @@ git add src/components/post-article.tsx src/components/post-table-of-contents.ts
 git commit -m "refactor: unify post reading surfaces"
 ```
 
-## Task 4: Package Reflective Noto Serif SC Typography
+## Task 4: Load Reflective Noto Serif SC Typography
 
 **Files:**
-- Modify: `package.json`
-- Modify: `bun.lock`
 - Modify: `src/styles/app.css`
 - Modify: `src/tests/site-theme.test.ts`
 
@@ -340,8 +336,10 @@ git commit -m "refactor: unify post reading surfaces"
 Add this test to `src/tests/site-theme.test.ts`:
 
 ```ts
-it("registers a dedicated packaged serif token for reflective prose", () => {
-  expect(stylesheet).toContain('@import "@fontsource/noto-serif-sc/400.css"');
+it("loads the reflective serif from Google Fonts", () => {
+  expect(stylesheet).toContain(
+    '@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap")',
+  );
   expect(stylesheet).toContain('--font-reflective: "Noto Serif SC"');
 });
 ```
@@ -354,24 +352,17 @@ Run:
 bunx vitest run --config vitest.config.mjs src/tests/site-theme.test.ts
 ```
 
-Expected: FAIL because no package-managed font or reflective font token is
+Expected: FAIL because no Google Fonts import or reflective font token is
 registered.
 
-- [ ] **Step 3: Install the package-managed font**
+- [ ] **Step 3: Register the Google Fonts stylesheet**
 
-Run:
-
-```bash
-bun add @fontsource/noto-serif-sc
-```
-
-- [ ] **Step 4: Register the font and token**
+- [ ] **Step 4: Register the font token**
 
 At the top of `src/styles/app.css`, add:
 
 ```css
-@import "@fontsource/noto-serif-sc/400.css";
-@import "@fontsource/noto-serif-sc/600.css";
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap");
 ```
 
 In `:root`, add:
@@ -389,12 +380,12 @@ Run:
 bunx vitest run --config vitest.config.mjs src/tests/site-theme.test.ts
 ```
 
-Expected: PASS with a package import and dedicated reflective font token.
+Expected: PASS with a Google Fonts import and dedicated reflective font token.
 
-- [ ] **Step 6: Commit the packaged reflective font**
+- [ ] **Step 6: Commit the reflective font delivery**
 
 ```bash
-git add package.json bun.lock src/styles/app.css src/tests/site-theme.test.ts
+git add src/styles/app.css src/tests/site-theme.test.ts
 git commit -m "feat: restore reflective serif typography"
 ```
 

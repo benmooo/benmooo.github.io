@@ -1,5 +1,4 @@
-@import "@fontsource/noto-serif-sc/400.css";
-@import "@fontsource/noto-serif-sc/600.css";
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 

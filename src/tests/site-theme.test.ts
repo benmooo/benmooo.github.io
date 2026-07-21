@@ -18,8 +18,10 @@ describe("site system theme", () => {
     expect(stylesheet).toContain("--border: rgba(244, 236, 226, 0.14)");
   });
 
-  it("registers a dedicated packaged serif token for reflective prose", () => {
-    expect(stylesheet).toContain('@import "@fontsource/noto-serif-sc/400.css"');
+  it("loads the reflective serif from Google Fonts", () => {
+    expect(stylesheet).toContain(
+      '@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap")',
+    );
     expect(stylesheet).toContain("--font-reflective: \"Noto Serif SC\"");
     expect(stylesheet).toContain(".reflective-prose");
   });
