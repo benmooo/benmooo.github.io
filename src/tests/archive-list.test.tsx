@@ -21,8 +21,18 @@ describe("archive list", () => {
     const article = container.querySelector(
       "[data-archive-entry='fp-ts-tap']",
     );
+    const titleRow = article?.querySelector(
+      "[data-archive-title-row='fp-ts-tap']",
+    );
 
     expect(article?.tagName).toBe("ARTICLE");
+    expect(titleRow).toBeTruthy();
+    expect(
+      titleRow?.querySelector("[data-archive-marker='true']"),
+    ).toBeTruthy();
+    expect(
+      article?.querySelector(":scope > [data-archive-marker='true']"),
+    ).toBeNull();
     expect(
       screen.getByRole("link", { name: /fp-ts 进阶指南：深度解析 tap 系列副作用函数/i }),
     ).toBeTruthy();

@@ -43,27 +43,33 @@ export function ArchiveList({ groups }: ArchiveListProps) {
                     data-archive-entry={post.slug}
                     className="relative border-t border-[var(--border)] py-6 first:border-t-0 first:pt-0"
                   >
-                    <span
-                      aria-hidden="true"
-                      className="absolute -left-[1.67rem] top-8 h-1.5 w-1.5 rounded-full bg-[var(--accent)] md:-left-[2.1rem]"
-                    />
+                    <div
+                      data-archive-title-row={post.slug}
+                      className="relative"
+                    >
+                      <span
+                        aria-hidden="true"
+                        data-archive-marker="true"
+                        className="absolute -left-[1.67rem] top-[0.62rem] h-1.5 w-1.5 rounded-full bg-[var(--accent)] md:-left-[2.1rem]"
+                      />
 
-                    <header className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-                      <h3 className="font-serif text-xl leading-tight text-[var(--ink)]">
-                        <a
-                          href={`/blog/${post.slug}`}
-                          className="transition hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
+                      <header className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                        <h3 className="font-serif text-xl leading-tight text-[var(--ink)]">
+                          <a
+                            href={`/blog/${post.slug}`}
+                            className="transition hover:text-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
+                          >
+                            {post.title}
+                          </a>
+                        </h3>
+                        <time
+                          dateTime={post.date}
+                          className="shrink-0 text-xs tracking-[0.08em] text-[var(--muted)]"
                         >
-                          {post.title}
-                        </a>
-                      </h3>
-                      <time
-                        dateTime={post.date}
-                        className="shrink-0 text-xs tracking-[0.08em] text-[var(--muted)]"
-                      >
-                        {formatPostDate(post.date)}
-                      </time>
-                    </header>
+                          {formatPostDate(post.date)}
+                        </time>
+                      </header>
+                    </div>
 
                     {post.tags.length > 0 ? (
                       <ul
