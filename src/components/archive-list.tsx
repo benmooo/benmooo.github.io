@@ -65,12 +65,6 @@ export function ArchiveList({ groups }: ArchiveListProps) {
                       </time>
                     </header>
 
-                    {post.description ? (
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                        {post.description}
-                      </p>
-                    ) : null}
-
                     {post.tags.length > 0 ? (
                       <ul
                         aria-label={`${post.title} tags`}

@@ -35,4 +35,13 @@ describe("posts query layer", () => {
     expect(groups[0]?.posts.map((post) => post.slug)).toContain("fp-ts-tap");
     expect(groups.some((group) => group.year === 2025)).toBe(true);
   });
+
+  it("omits optional descriptions from archive summaries", () => {
+    const archivePost = listPostsByYear()
+      .flatMap((group) => group.posts)
+      .find((post) => post.slug === "fp-ts-tap");
+
+    expect(archivePost).toBeDefined();
+    expect(archivePost).not.toHaveProperty("description");
+  });
 });

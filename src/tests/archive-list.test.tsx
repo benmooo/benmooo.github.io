@@ -27,8 +27,8 @@ describe("archive list", () => {
       screen.getByRole("link", { name: /fp-ts 进阶指南：深度解析 tap 系列副作用函数/i }),
     ).toBeTruthy();
     expect(
-      screen.getByText(/深入探讨 fp-ts 中 TaskEither 的 tap 系列函数/),
-    ).toBeTruthy();
+      screen.queryByText(/深入探讨 fp-ts 中 TaskEither 的 tap 系列函数/),
+    ).toBeNull();
     expect(within(article as HTMLElement).getByText("fp-ts")).toBeTruthy();
     expect(screen.getByText("2026.01.28")).toBeTruthy();
     expect(screen.queryByPlaceholderText(/搜索|search/i)).toBeNull();

@@ -4,7 +4,7 @@ export type Post = (typeof allPosts)[number];
 
 export type PostSummary = Pick<
   Post,
-  "slug" | "title" | "description" | "date" | "tags" | "year" | "isEssay"
+  "slug" | "title" | "date" | "tags" | "year" | "isEssay"
 >;
 
 export type PostsByYear = {
@@ -26,7 +26,6 @@ export const getPostBySlug = (slug: string) =>
 const toPostSummary = (post: Post): PostSummary => ({
   slug: post.slug,
   title: post.title,
-  description: post.description,
   date: post.date,
   tags: post.tags,
   year: post.year,
