@@ -16,7 +16,7 @@ export function PostArticle({ post }: PostArticleProps) {
     title: post.title,
   });
   const proseClassName = [
-    "prose prose-base mt-14 max-w-none prose-headings:font-serif prose-p:text-[var(--ink)] prose-p:leading-8 prose-strong:text-[var(--ink)] prose-a:text-[var(--ink)] prose-a:decoration-[var(--accent)] prose-blockquote:border-[var(--muted)] prose-code:text-[var(--ink)] prose-pre:bg-[var(--paper)] prose-pre:text-[var(--ink)] prose-img:rounded-[1.5rem]",
+    "prose prose-semantic prose-base mt-14 max-w-none prose-headings:font-serif prose-p:text-[var(--ink)] prose-p:leading-8 prose-strong:text-[var(--ink)] prose-a:text-[var(--ink)] prose-a:decoration-[var(--accent)] prose-blockquote:border-[var(--muted)] prose-code:text-[var(--ink)] prose-pre:bg-[var(--paper)] prose-pre:text-[var(--ink)] prose-img:rounded-[1.5rem]",
     post.isEssay ? "reflective-prose prose-p:indent-6" : "",
   ]
     .filter(Boolean)

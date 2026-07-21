@@ -25,4 +25,13 @@ describe("site system theme", () => {
     expect(stylesheet).toContain("--font-reflective: \"Noto Serif SC\"");
     expect(stylesheet).toContain(".reflective-prose");
   });
+
+  it("maps Typography prose variables to the semantic site palette", () => {
+    expect(stylesheet).toContain(".prose-semantic");
+    expect(stylesheet).toContain("--tw-prose-body: var(--ink)");
+    expect(stylesheet).toContain("--tw-prose-headings: var(--ink)");
+    expect(stylesheet).toContain("--tw-prose-bullets: var(--muted)");
+    expect(stylesheet).toContain("--tw-prose-th-borders: var(--border-strong)");
+    expect(stylesheet).toContain("--tw-prose-td-borders: var(--border)");
+  });
 });

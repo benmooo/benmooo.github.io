@@ -30,6 +30,7 @@ describe("post article", () => {
     expect(
       container.querySelector("[data-post-table-of-contents='true']"),
     ).toBeTruthy();
+    expect(reflectiveProse?.className ?? "").toContain("prose-semantic");
     expect(reflectiveProse?.className ?? "").toContain("prose-p:indent-6");
     expect(screen.getByText("感知与情绪归一化")).toBeTruthy();
   });
@@ -51,6 +52,9 @@ describe("post article", () => {
     expect(
       container.querySelector("[data-reflective-prose='true']"),
     ).toBeNull();
+    expect(container.querySelector(".prose")?.className ?? "").toContain(
+      "prose-semantic",
+    );
     expect(screen.getByText(/tap 系列副作用函数/)).toBeTruthy();
   });
 });
