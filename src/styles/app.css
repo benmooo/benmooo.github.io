@@ -1,8 +1,12 @@
+@import "@fontsource/noto-serif-sc/400.css";
+@import "@fontsource/noto-serif-sc/600.css";
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 :root {
   color-scheme: light dark;
+  --font-reflective: "Noto Serif SC", "Iowan Old Style", "Palatino Linotype",
+    "Book Antiqua", "Times New Roman", serif;
   --canvas: #f4efe8;
   --paper: #fbf8f3;
   --ink: #1f140f;
@@ -42,6 +46,11 @@ body {
   color: var(--ink);
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
     "Noto Serif SC", "Times New Roman", serif;
+}
+
+.reflective-prose,
+.reflective-prose :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-reflective);
 }
 
 a {

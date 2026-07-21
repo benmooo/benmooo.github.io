@@ -17,4 +17,10 @@ describe("site system theme", () => {
     expect(stylesheet).toContain("--ink: #f4ece2");
     expect(stylesheet).toContain("--border: rgba(244, 236, 226, 0.14)");
   });
+
+  it("registers a dedicated packaged serif token for reflective prose", () => {
+    expect(stylesheet).toContain('@import "@fontsource/noto-serif-sc/400.css"');
+    expect(stylesheet).toContain("--font-reflective: \"Noto Serif SC\"");
+    expect(stylesheet).toContain(".reflective-prose");
+  });
 });
