@@ -7,7 +7,7 @@ import { PostArticle } from "~/components/post-article";
 import { getPostBySlug } from "~/lib/posts";
 
 describe("post article", () => {
-  it("renders essay posts with instant-photo treatment and a table of contents", () => {
+  it("renders essay posts on the shared surface with reflective prose treatment", () => {
     const post = getPostBySlug("emotion-normalize");
 
     if (!post) {
@@ -15,14 +15,26 @@ describe("post article", () => {
     }
 
     const { container } = render(<PostArticle post={post} />);
+    const surface = container.querySelector(
+      "[data-post-surface='standard']",
+    );
+    const reflectiveProse = container.querySelector(
+      "[data-reflective-prose='true']",
+    );
 
-    expect(container.querySelector('[data-post-mode="essay"]')).toBeTruthy();
+    expect(surface?.className ?? "").toContain("bg-[var(--canvas)]");
+    expect(surface?.className ?? "").toContain("text-[var(--ink)]");
+    expect(container.querySelector("[data-post-surface='essay']")).toBeNull();
     expect(container.querySelectorAll('[data-instant-photo="true"]').length).toBeGreaterThan(0);
     expect(screen.getByRole("navigation", { name: "目录" })).toBeTruthy();
+    expect(
+      container.querySelector("[data-post-table-of-contents='true']"),
+    ).toBeTruthy();
+    expect(reflectiveProse?.className ?? "").toContain("prose-p:indent-6");
     expect(screen.getByText("感知与情绪归一化")).toBeTruthy();
   });
 
-  it("renders technical posts in standard mode", () => {
+  it("renders technical posts on the shared surface without reflective prose", () => {
     const post = getPostBySlug("fp-ts-tap");
 
     if (!post) {
@@ -30,8 +42,15 @@ describe("post article", () => {
     }
 
     const { container } = render(<PostArticle post={post} />);
+    const surface = container.querySelector(
+      "[data-post-surface='standard']",
+    );
 
-    expect(container.querySelector('[data-post-mode="standard"]')).toBeTruthy();
+    expect(surface?.className ?? "").toContain("bg-[var(--canvas)]");
+    expect(surface?.className ?? "").toContain("text-[var(--ink)]");
+    expect(
+      container.querySelector("[data-reflective-prose='true']"),
+    ).toBeNull();
     expect(screen.getByText(/tap 系列副作用函数/)).toBeTruthy();
   });
 });
