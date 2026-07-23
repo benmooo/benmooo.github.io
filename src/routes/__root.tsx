@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
@@ -35,14 +36,21 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isWriterStudio = pathname === "/studio";
+
   return (
     <html lang="zh-CN">
       <head>
         <HeadContent />
       </head>
       <body>
-        <SiteShell>{children}</SiteShell>
-        <TanStackRouterDevtools position="bottom-right" />
+        {isWriterStudio ? children : <SiteShell>{children}</SiteShell>}
+        {isWriterStudio ? null : (
+          <TanStackRouterDevtools position="bottom-right" />
+        )}
         <Scripts />
       </body>
     </html>
