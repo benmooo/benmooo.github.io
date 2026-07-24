@@ -16,3 +16,14 @@ and avoids an unauthenticated production write API.
 Zen mode uses the browser Fullscreen API. It removes browser-visible page chrome
 and fades the remaining writer controls until the user intentionally reaches
 them.
+
+## Reading Typography
+
+Writer Studio, its Markdown preview, and public post titles and prose use a
+locally bundled LXGW WenKai webfont. The font is referenced through
+`@fontsource/lxgw-wenkai`, so readers do not depend on a third-party font
+service. The required SIL Open Font License 1.1 notice is available at
+`public/LXGW-WenKai-OFL.txt`.
+
+Navigation, metadata, and controls retain the system sans-serif stack. Code and
+preformatted content retain the existing monospace stack.

@@ -5,7 +5,12 @@ import {
   indentWithTab,
 } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { Compartment, EditorState, StateField } from "@codemirror/state";
+import {
+  Compartment,
+  EditorState,
+  StateField,
+  type Extension,
+} from "@codemirror/state";
 import {
   Decoration,
   EditorView,
@@ -33,24 +38,24 @@ const createFocusedLineDecorations = (state: EditorState): DecorationSet => {
   ]);
 };
 
-const createFocusModeExtension = (enabled: boolean) => {
-  if (!enabled) {
-    return [];
-  }
+export const writerFocusLineField = StateField.define<DecorationSet>({
+  create: createFocusedLineDecorations,
+  update: (decorations, transaction) =>
+    transaction.docChanged || transaction.selection
+      ? createFocusedLineDecorations(transaction.state)
+      : decorations,
+  provide: (field) => EditorView.decorations.from(field),
+});
 
-  const focusLineField = StateField.define<DecorationSet>({
-    create: createFocusedLineDecorations,
-    update: (decorations, transaction) =>
-      transaction.docChanged || transaction.selection
-        ? createFocusedLineDecorations(transaction.state)
-        : decorations,
-    provide: (field) => EditorView.decorations.from(field),
-  });
+export const createFocusModeExtension = (enabled: boolean): Extension =>
+  enabled
+    ? [
+        writerFocusLineField,
+        EditorView.editorAttributes.of({ class: "writer-focus-mode" }),
+      ]
+    : [];
 
-  return focusLineField;
-};
-
-const writerEditorTheme = EditorView.theme({
+export const writerEditorTheme = EditorView.theme({
   "&": {
     height: "100%",
     backgroundColor: "transparent",
@@ -68,13 +73,9 @@ const writerEditorTheme = EditorView.theme({
     maxWidth: "var(--writer-measure)",
     margin: "0 auto",
     padding: "clamp(3rem, 10vh, 9rem) clamp(1.5rem, 7vw, 6rem) 42vh",
-    caretColor: "var(--writer-accent)",
   },
   ".cm-line": {
     padding: "0",
-  },
-  ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--writer-accent)",
   },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection":
     {
@@ -202,7 +203,6 @@ export function WriterEditor({
       return;
     }
 
-    editorView.dom.classList.toggle("writer-focus-mode", settings.focusMode);
     editorView.dispatch({
       effects: focusModeCompartment.current.reconfigure(
         createFocusModeExtension(settings.focusMode),

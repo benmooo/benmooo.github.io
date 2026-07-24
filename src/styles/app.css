@@ -1,13 +1,21 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@font-face {
+  font-family: "LXGW WenKai";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2")
+    format("woff2");
+}
+
 :root {
   color-scheme: light dark;
-  --font-reflective: "Noto Serif SC", "Iowan Old Style", "Palatino Linotype",
-    "Book Antiqua", "Times New Roman", serif;
-  --writer-font: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
-    "Noto Serif SC", "Times New Roman", serif;
+  --font-reading: "LXGW WenKai", "Noto Serif SC", "Songti SC", "STSong",
+    "SimSun", serif;
+  --font-reflective: var(--font-reading);
+  --writer-font: var(--font-reading);
   --writer-canvas: #fbfaf7;
   --writer-ink: #29211c;
   --writer-muted: #8a7c72;
@@ -88,6 +96,20 @@ body {
 .reflective-prose,
 .reflective-prose :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-reflective);
+}
+
+.post-reading-title,
+.post-prose {
+  font-family: var(--font-reading);
+}
+
+.post-prose {
+  font-size: 1.125rem;
+  line-height: 1.95;
+}
+
+.post-prose :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
 }
 
 a {
@@ -342,6 +364,10 @@ pre {
   line-height: var(--writer-line-height);
 }
 
+.writer-preview-content :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
+}
+
 .writer-preview-content > :first-child {
   margin-top: 0;
 }
@@ -405,6 +431,10 @@ pre {
 }
 
 @media (max-width: 48rem) {
+  .post-prose {
+    font-size: 1.0625rem;
+  }
+
   .writer-header {
     min-height: 4rem;
     gap: 0.5rem;

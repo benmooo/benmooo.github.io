@@ -18,12 +18,15 @@ describe("site system theme", () => {
     expect(stylesheet).toContain("--border: rgba(244, 236, 226, 0.14)");
   });
 
-  it("loads the reflective serif from Google Fonts", () => {
+  it("self-hosts LXGW WenKai for writing and reading surfaces", () => {
+    expect(stylesheet).toContain('font-family: "LXGW WenKai"');
     expect(stylesheet).toContain(
-      '@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap")',
+      '@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2',
     );
-    expect(stylesheet).toContain("--font-reflective: \"Noto Serif SC\"");
+    expect(stylesheet).toContain("--font-reading: \"LXGW WenKai\"");
+    expect(stylesheet).toContain("--writer-font: var(--font-reading)");
     expect(stylesheet).toContain(".reflective-prose");
+    expect(stylesheet).toContain(".post-prose");
   });
 
   it("maps Typography prose variables to the semantic site palette", () => {
