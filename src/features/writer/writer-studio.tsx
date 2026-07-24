@@ -8,23 +8,28 @@ import {
 import ReactMarkdown from "react-markdown";
 
 import {
+  deleteWriterDraftOnClient,
   downloadWriterDraftOnClient,
   loadWriterDraftOnClient,
+  loadWriterLibraryStateOnClient,
   saveWriterDraftOnClient,
   saveWriterSnapshotOnClient,
+  selectWriterDraftOnClient,
 } from "~/features/writer/writer-browser";
 import { WriterEditor } from "~/features/writer/writer-editor";
+import { WriterLibrary } from "~/features/writer/writer-library";
 import {
   countWritingUnits,
   createWriterDraft,
   createWriterSnapshot,
   shouldCreateWriterSnapshot,
+  upsertWriterDraftSummary,
   updateWriterDraft,
   type WriterDraft,
+  type WriterDraftSummary,
   type WriterSettings,
 } from "~/features/writer/writer-model";
 
-const primaryDraftId = "primary";
 const autoSaveDelayMilliseconds = 500;
 
 type SaveState = "loading" | "saving" | "saved" | "error";
@@ -33,9 +38,9 @@ const toToday = () => new Date().toISOString().slice(0, 10);
 
 const toNow = () => new Date().toISOString();
 
-const createPrimaryDraft = () =>
+const createNewDraft = () =>
   createWriterDraft({
-    id: primaryDraftId,
+    id: crypto.randomUUID(),
     now: toNow(),
   });
 
@@ -66,6 +71,7 @@ type StudioHeaderProps = {
   onTitleChange: (title: string) => void;
   onToggleZenMode: () => void;
   onTogglePreview: () => void;
+  onOpenLibrary: () => void;
   onExport: () => void;
 };
 
@@ -77,6 +83,7 @@ function StudioHeader({
   onTitleChange,
   onToggleZenMode,
   onTogglePreview,
+  onOpenLibrary,
   onExport,
 }: StudioHeaderProps) {
   return (
@@ -93,6 +100,13 @@ function StudioHeader({
         <span className="writer-save-state" data-state={saveState}>
           {saveStateLabel[saveState]}
         </span>
+        <button
+          className="writer-action writer-library-action"
+          onClick={onOpenLibrary}
+          type="button"
+        >
+          文稿
+        </button>
         <button
           className="writer-action"
           onClick={onTogglePreview}
@@ -235,40 +249,54 @@ function WriterPreview({ draft, onClose }: WriterPreviewProps) {
 export function WriterStudio() {
   const studioElement = useRef<HTMLElement>(null);
   const draftReference = useRef<WriterDraft | null>(null);
-  const lastSnapshotAt = useRef<string | null>(null);
+  const lastSnapshotAtByDraft = useRef<Record<string, string>>({});
   const [draft, setDraft] = useState<WriterDraft | null>(null);
+  const [drafts, setDrafts] = useState<WriterDraftSummary[]>([]);
   const [saveState, setSaveState] = useState<SaveState>("loading");
+  const [isLibraryBusy, setIsLibraryBusy] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const saveCurrentDraft = useCallback(async () => {
+  const saveCurrentDraft = useCallback(async (): Promise<WriterDraft | null> => {
     const currentDraft = draftReference.current;
 
     if (!currentDraft) {
-      return;
+      return null;
     }
 
     setSaveState("saving");
 
     try {
       await saveWriterDraftOnClient(currentDraft);
+      setDrafts((currentDrafts) =>
+        upsertWriterDraftSummary({
+          draft: currentDraft,
+          drafts: currentDrafts,
+        }),
+      );
       const savedAt = toNow();
 
       if (
         shouldCreateWriterSnapshot({
-          lastSnapshotAt: lastSnapshotAt.current,
+          lastSnapshotAt: lastSnapshotAtByDraft.current[currentDraft.id] ?? null,
           now: savedAt,
         })
       ) {
         await saveWriterSnapshotOnClient(
           createWriterSnapshot(currentDraft, savedAt),
         );
-        lastSnapshotAt.current = savedAt;
+        lastSnapshotAtByDraft.current = {
+          ...lastSnapshotAtByDraft.current,
+          [currentDraft.id]: savedAt,
+        };
       }
 
       setSaveState("saved");
+      return currentDraft;
     } catch {
       setSaveState("error");
+      return null;
     }
   }, []);
 
@@ -277,15 +305,38 @@ export function WriterStudio() {
 
     const loadDraft = async () => {
       try {
-        const savedDraft = await loadWriterDraftOnClient(primaryDraftId);
+        const libraryState = await loadWriterLibraryStateOnClient();
+        const savedDraft = libraryState.activeDraftId
+          ? await loadWriterDraftOnClient(libraryState.activeDraftId)
+          : null;
+        const initialDraft = savedDraft ?? createNewDraft();
 
         if (isMounted) {
-          setDraft(savedDraft ?? createPrimaryDraft());
+          setDraft(initialDraft);
+          setDrafts(
+            upsertWriterDraftSummary({
+              draft: initialDraft,
+              drafts: libraryState.drafts,
+            }),
+          );
           setSaveState("saved");
+        }
+
+        if (!savedDraft) {
+          await saveWriterDraftOnClient(initialDraft);
+          await selectWriterDraftOnClient(initialDraft.id);
         }
       } catch {
         if (isMounted) {
-          setDraft(createPrimaryDraft());
+          const fallbackDraft = createNewDraft();
+
+          setDraft(fallbackDraft);
+          setDrafts(
+            upsertWriterDraftSummary({
+              draft: fallbackDraft,
+              drafts: [],
+            }),
+          );
           setSaveState("error");
         }
       }
@@ -340,6 +391,12 @@ export function WriterStudio() {
 
       draftReference.current = nextDraft;
       setDraft(nextDraft);
+      setDrafts((currentDrafts) =>
+        upsertWriterDraftSummary({
+          draft: nextDraft,
+          drafts: currentDrafts,
+        }),
+      );
     },
     [],
   );
@@ -369,6 +426,116 @@ export function WriterStudio() {
       draft: true,
     });
   }, []);
+
+  const activateDraft = useCallback((nextDraft: WriterDraft) => {
+    draftReference.current = nextDraft;
+    setDraft(nextDraft);
+    setDrafts((currentDrafts) =>
+      upsertWriterDraftSummary({
+        draft: nextDraft,
+        drafts: currentDrafts,
+      }),
+    );
+    setIsPreviewOpen(false);
+    setSaveState("saved");
+  }, []);
+
+  const createDraft = useCallback(async () => {
+    setIsLibraryBusy(true);
+
+    try {
+      if (draftReference.current && !(await saveCurrentDraft())) {
+        return;
+      }
+
+      const nextDraft = createNewDraft();
+
+      await saveWriterDraftOnClient(nextDraft);
+      await selectWriterDraftOnClient(nextDraft.id);
+      activateDraft(nextDraft);
+      setIsLibraryOpen(false);
+    } catch {
+      setSaveState("error");
+    } finally {
+      setIsLibraryBusy(false);
+    }
+  }, [activateDraft, saveCurrentDraft]);
+
+  const selectDraft = useCallback(
+    async (draftId: string) => {
+      if (draftReference.current?.id === draftId) {
+        setIsLibraryOpen(false);
+
+        return;
+      }
+
+      setIsLibraryBusy(true);
+
+      try {
+        if (!(await saveCurrentDraft())) {
+          return;
+        }
+
+        const nextDraft = await selectWriterDraftOnClient(draftId);
+
+        if (!nextDraft) {
+          setSaveState("error");
+
+          return;
+        }
+
+        activateDraft(nextDraft);
+        setIsLibraryOpen(false);
+      } catch {
+        setSaveState("error");
+      } finally {
+        setIsLibraryBusy(false);
+      }
+    },
+    [activateDraft, saveCurrentDraft],
+  );
+
+  const deleteDraft = useCallback(
+    async (draftId: string) => {
+      setIsLibraryBusy(true);
+
+      try {
+        if (draftReference.current?.id === draftId && !(await saveCurrentDraft())) {
+          return;
+        }
+
+        const nextLibraryState = await deleteWriterDraftOnClient(draftId);
+        setDrafts(nextLibraryState.drafts);
+
+        if (draftReference.current?.id !== draftId) {
+          return;
+        }
+
+        const nextDraft = nextLibraryState.activeDraftId
+          ? await selectWriterDraftOnClient(nextLibraryState.activeDraftId)
+          : null;
+
+        if (nextDraft) {
+          activateDraft(nextDraft);
+          setIsLibraryOpen(false);
+
+          return;
+        }
+
+        const replacementDraft = createNewDraft();
+
+        await saveWriterDraftOnClient(replacementDraft);
+        await selectWriterDraftOnClient(replacementDraft.id);
+        activateDraft(replacementDraft);
+        setIsLibraryOpen(false);
+      } catch {
+        setSaveState("error");
+      } finally {
+        setIsLibraryBusy(false);
+      }
+    },
+    [activateDraft, saveCurrentDraft],
+  );
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -431,6 +598,7 @@ export function WriterStudio() {
         isPreviewOpen={isPreviewOpen}
         isZenMode={isZenMode}
         onExport={exportDraft}
+        onOpenLibrary={() => setIsLibraryOpen(true)}
         onTitleChange={(title) => updateDraft({ title })}
         onTogglePreview={() => setIsPreviewOpen((isOpen) => !isOpen)}
         onToggleZenMode={() => void toggleZenMode()}
@@ -445,6 +613,7 @@ export function WriterStudio() {
           />
         ) : (
           <WriterEditor
+            key={draft.id}
             onChange={(body) => updateDraft({ body })}
             onSave={() => void saveCurrentDraft()}
             placeholder="写下去，直到想法变得清晰。"
@@ -453,6 +622,17 @@ export function WriterStudio() {
           />
         )}
       </div>
+
+      <WriterLibrary
+        activeDraftId={draft.id}
+        drafts={drafts}
+        isBusy={isLibraryBusy}
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onCreate={() => void createDraft()}
+        onDelete={(draftId) => void deleteDraft(draftId)}
+        onSelect={(draftId) => void selectDraft(draftId)}
+      />
 
       <WriterFooter
         body={draft.body}

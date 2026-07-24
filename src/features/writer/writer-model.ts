@@ -20,6 +20,29 @@ export const WriterDraftSchema = z.object({
 
 export type WriterDraft = z.infer<typeof WriterDraftSchema>;
 
+export const WriterDraftSummarySchema = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  writingUnits: z.number().int().nonnegative(),
+});
+
+export type WriterDraftSummary = z.infer<typeof WriterDraftSummarySchema>;
+
+export const WriterLibrarySchema = z.object({
+  activeDraftId: z.string().min(1).nullable().default(null),
+});
+
+export type WriterLibrary = z.infer<typeof WriterLibrarySchema>;
+
+export const WriterLibraryStateSchema = z.object({
+  activeDraftId: z.string().min(1).nullable(),
+  drafts: z.array(WriterDraftSummarySchema),
+});
+
+export type WriterLibraryState = z.infer<typeof WriterLibraryStateSchema>;
+
 export const WriterSnapshotSchema = z.object({
   id: z.string().min(1),
   draftId: z.string().min(1),
@@ -51,6 +74,8 @@ export type UpdateWriterDraftInput = {
   changes: Partial<WriterDraftChanges>;
   now: string;
 };
+
+export const legacyPrimaryDraftId = "primary";
 
 const defaultWriterSettings: WriterSettings = {
   focusMode: false,
@@ -133,6 +158,86 @@ export const countWritingUnits = (content: string) => {
 
   return cjkCharacterCount + wordCount;
 };
+
+export const getWriterDraftLabel = (
+  draft: Pick<WriterDraftSummary, "title">,
+) => draft.title.trim() || "无题";
+
+export const sortWriterDraftsByUpdatedAt = <
+  Draft extends Pick<WriterDraftSummary, "id" | "createdAt" | "updatedAt">,
+>(
+  drafts: readonly Draft[],
+) =>
+  [...drafts].sort(
+    (left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt) ||
+      right.createdAt.localeCompare(left.createdAt) ||
+      right.id.localeCompare(left.id),
+  );
+
+export const toWriterDraftSummary = (
+  draft: WriterDraft,
+): WriterDraftSummary =>
+  WriterDraftSummarySchema.parse({
+    id: draft.id,
+    title: draft.title,
+    createdAt: draft.createdAt,
+    updatedAt: draft.updatedAt,
+    writingUnits: countWritingUnits(draft.body),
+  });
+
+export const createWriterLibraryState = ({
+  activeDraftId,
+  drafts,
+}: {
+  activeDraftId: string | null;
+  drafts: readonly WriterDraftSummary[];
+}): WriterLibraryState =>
+  WriterLibraryStateSchema.parse({
+    activeDraftId,
+    drafts: sortWriterDraftsByUpdatedAt(drafts),
+  });
+
+export const resolveWriterLibrary = ({
+  library,
+  drafts,
+}: {
+  library: WriterLibrary;
+  drafts: readonly WriterDraft[];
+}): WriterLibrary => {
+  const sortedDrafts = sortWriterDraftsByUpdatedAt(drafts);
+  const containsDraft = (draftId: string) =>
+    sortedDrafts.some((draft) => draft.id === draftId);
+  const activeDraftId =
+    (library.activeDraftId && containsDraft(library.activeDraftId)
+      ? library.activeDraftId
+      : null) ??
+    (containsDraft(legacyPrimaryDraftId) ? legacyPrimaryDraftId : null) ??
+    sortedDrafts[0]?.id ??
+    null;
+
+  return WriterLibrarySchema.parse({ activeDraftId });
+};
+
+export const upsertWriterDraftSummary = ({
+  draft,
+  drafts,
+}: {
+  draft: WriterDraft;
+  drafts: readonly WriterDraftSummary[];
+}) =>
+  sortWriterDraftsByUpdatedAt([
+    ...drafts.filter((summary) => summary.id !== draft.id),
+    toWriterDraftSummary(draft),
+  ]);
+
+export const removeWriterDraftSummary = ({
+  draftId,
+  drafts,
+}: {
+  draftId: string;
+  drafts: readonly WriterDraftSummary[];
+}) => drafts.filter((draft) => draft.id !== draftId);
 
 export const toMdx = (
   draft: WriterDraft,

@@ -4,10 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const writerBrowserMocks = vi.hoisted(() => ({
+  deleteWriterDraftOnClient: vi.fn(),
   downloadWriterDraftOnClient: vi.fn(),
   loadWriterDraftOnClient: vi.fn(),
+  loadWriterLibraryStateOnClient: vi.fn(),
   saveWriterDraftOnClient: vi.fn(),
   saveWriterSnapshotOnClient: vi.fn(),
+  selectWriterDraftOnClient: vi.fn(),
 }));
 
 vi.mock("~/features/writer/writer-browser", () => writerBrowserMocks);
@@ -40,11 +43,42 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  writerBrowserMocks.loadWriterDraftOnClient.mockResolvedValue(null);
+  const primaryDraft = {
+    id: "primary",
+    title: "",
+    body: "",
+    createdAt: "2026-07-24T00:00:00.000Z",
+    updatedAt: "2026-07-24T00:00:00.000Z",
+    settings: {
+      focusMode: false,
+      typewriterMode: true,
+      fontScale: 1,
+      lineHeight: 1.85,
+    },
+  };
+
+  writerBrowserMocks.loadWriterLibraryStateOnClient.mockResolvedValue({
+    activeDraftId: "primary",
+    drafts: [
+      {
+        id: "primary",
+        title: "",
+        createdAt: primaryDraft.createdAt,
+        updatedAt: primaryDraft.updatedAt,
+        writingUnits: 0,
+      },
+    ],
+  });
+  writerBrowserMocks.loadWriterDraftOnClient.mockResolvedValue(primaryDraft);
   writerBrowserMocks.saveWriterDraftOnClient.mockResolvedValue("primary");
   writerBrowserMocks.saveWriterSnapshotOnClient.mockResolvedValue(
     "primary:snapshot",
   );
+  writerBrowserMocks.selectWriterDraftOnClient.mockResolvedValue(primaryDraft);
+  writerBrowserMocks.deleteWriterDraftOnClient.mockResolvedValue({
+    activeDraftId: null,
+    drafts: [],
+  });
   writerBrowserMocks.downloadWriterDraftOnClient.mockResolvedValue(undefined);
 });
 
@@ -109,5 +143,79 @@ describe("writer studio", () => {
     });
 
     expect(screen.getByText("11 字")).toBeTruthy();
+  });
+
+  it("saves the current draft before selecting another local draft", async () => {
+    const secondDraft = {
+      id: "draft-second",
+      title: "第二篇",
+      body: "另一段文字",
+      createdAt: "2026-07-24T01:00:00.000Z",
+      updatedAt: "2026-07-24T01:00:00.000Z",
+      settings: {
+        focusMode: false,
+        typewriterMode: true,
+        fontScale: 1,
+        lineHeight: 1.85,
+      },
+    };
+
+    writerBrowserMocks.loadWriterLibraryStateOnClient.mockResolvedValue({
+      activeDraftId: "primary",
+      drafts: [
+        {
+          id: "primary",
+          title: "",
+          createdAt: "2026-07-24T00:00:00.000Z",
+          updatedAt: "2026-07-24T00:00:00.000Z",
+          writingUnits: 0,
+        },
+        {
+          id: secondDraft.id,
+          title: secondDraft.title,
+          createdAt: secondDraft.createdAt,
+          updatedAt: secondDraft.updatedAt,
+          writingUnits: 5,
+        },
+      ],
+    });
+    writerBrowserMocks.selectWriterDraftOnClient.mockResolvedValueOnce(
+      secondDraft,
+    );
+    render(<WriterStudio />);
+
+    await screen.findByRole("textbox", { name: "文章标题" });
+    fireEvent.click(screen.getByRole("button", { name: "文稿" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开 第二篇" }));
+
+    await waitFor(() => {
+      expect(writerBrowserMocks.saveWriterDraftOnClient).toHaveBeenCalled();
+      expect(writerBrowserMocks.selectWriterDraftOnClient).toHaveBeenCalledWith(
+        secondDraft.id,
+      );
+    });
+
+    expect(
+      (screen.getByRole("textbox", {
+        name: "文章标题",
+      }) as HTMLInputElement).value,
+    ).toBe(secondDraft.title);
+    expect(screen.queryByRole("complementary", { name: "文稿库" })).toBeNull();
+  });
+
+  it("creates a separate local draft from the library", async () => {
+    render(<WriterStudio />);
+
+    await screen.findByRole("textbox", { name: "文章标题" });
+    fireEvent.click(screen.getByRole("button", { name: "文稿" }));
+    fireEvent.click(screen.getByRole("button", { name: "新建文章" }));
+
+    await waitFor(() => {
+      const selectedDraftId =
+        writerBrowserMocks.selectWriterDraftOnClient.mock.calls.at(-1)?.[0];
+
+      expect(selectedDraftId).toBeTruthy();
+      expect(selectedDraftId).not.toBe("primary");
+    });
   });
 });

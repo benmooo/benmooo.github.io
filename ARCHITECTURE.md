@@ -17,6 +17,11 @@ Zen mode uses the browser Fullscreen API. It removes browser-visible page chrome
 and fades the remaining writer controls until the user intentionally reaches
 them.
 
+Writer Studio stores every document as an independent IndexedDB draft. A small
+library record tracks the active draft; the existing `primary` draft remains
+valid and becomes the initially selected document when the library first opens.
+Deleting a draft also removes its snapshots in the same transaction.
+
 ## Reading Typography
 
 Writer Studio, its Markdown preview, and public post titles and prose use a
