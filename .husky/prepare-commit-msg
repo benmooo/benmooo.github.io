@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# AICoMmits uses this native hook path to detect hook mode. Husky owns dispatch.
+.git/hooks/prepare-commit-msg "$@"
