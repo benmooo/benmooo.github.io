@@ -17,6 +17,17 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({
       srcDirectory: "src",
+      pages: [
+        { path: "/" },
+        { path: "/about" },
+        { path: "/contact" },
+        { path: "/blog" },
+      ],
+      prerender: {
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: true,
+      },
     }),
     viteReact(),
     nitro(),

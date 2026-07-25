@@ -3,33 +3,56 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write # 授予写入仓库内容的权限，这通常包含了推送分支的权限
-      pages: write # 授予写入 GitHub Pages 的权限
-      id-token: write # 对于使用 OIDC (OpenID Connect) 的部署
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: "bun"
 
       - name: Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun run test
 
       - name: Build static site
-        run: npm run build # next export 生成 out/ 目录
+        run: bun run build
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Disable Jekyll
+        run: touch .output/public/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
-          destination_dir: . # 直接部署到 gh-pages 根目录
+          path: ".output/public"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
