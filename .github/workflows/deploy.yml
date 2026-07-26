@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_PUBLISH_GATEWAY_URL: ${{ vars.PUBLISH_GATEWAY_URL || 'https://benmooo-publish-gateway.benmo0802.workers.dev' }}
     steps:
       - uses: actions/checkout@v4
 

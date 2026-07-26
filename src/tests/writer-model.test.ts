@@ -4,7 +4,10 @@ import {
   countWritingUnits,
   createWriterLibraryState,
   createWriterDraft,
+  createWriterImage,
   getWriterDraftLabel,
+  getWriterImageIds,
+  getWriterImageReference,
   getMdxExportFilename,
   removeWriterDraftSummary,
   resolveWriterLibrary,
@@ -175,5 +178,35 @@ draft: true
         now: "2026-07-23T08:05:00.000Z",
       }),
     ).toBe(true);
+  });
+
+  it("creates validated local images and keeps referenced image ids unique", () => {
+    const imageId = "f86f1f03-64ef-4b0c-92d6-a1616253f6bd";
+    const image = createWriterImage({
+      id: imageId,
+      draftId: "primary",
+      file: new File(["image"], "thought.png", { type: "image/png" }),
+      now: createdAt,
+    });
+    const reference = getWriterImageReference(imageId);
+
+    expect(image).toMatchObject({
+      id: imageId,
+      draftId: "primary",
+      filename: "thought.png",
+      contentType: "image/png",
+      size: 5,
+    });
+    expect(getWriterImageIds(`before ${reference} after ${reference}`)).toEqual([
+      imageId,
+    ]);
+    expect(() =>
+      createWriterImage({
+        id: imageId,
+        draftId: "primary",
+        file: new File(["image"], "thought.svg", { type: "image/svg+xml" }),
+        now: createdAt,
+      }),
+    ).toThrow();
   });
 });

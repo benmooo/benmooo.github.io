@@ -20,6 +20,29 @@ export const WriterDraftSchema = z.object({
 
 export type WriterDraft = z.infer<typeof WriterDraftSchema>;
 
+export const WriterImageContentTypeSchema = z.enum([
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+export type WriterImageContentType = z.infer<
+  typeof WriterImageContentTypeSchema
+>;
+
+export const WriterImageSchema = z.object({
+  id: z.string().uuid(),
+  draftId: z.string().min(1),
+  filename: z.string().trim().min(1).max(160),
+  contentType: WriterImageContentTypeSchema,
+  size: z.number().int().positive().max(3 * 1024 * 1024),
+  blob: z.instanceof(Blob),
+  createdAt: z.string().datetime(),
+});
+
+export type WriterImage = z.infer<typeof WriterImageSchema>;
+
 export const WriterDraftSummarySchema = z.object({
   id: z.string().min(1),
   title: z.string(),
@@ -75,6 +98,13 @@ export type UpdateWriterDraftInput = {
   now: string;
 };
 
+export type CreateWriterImageInput = {
+  id: string;
+  draftId: string;
+  file: File;
+  now: string;
+};
+
 export const legacyPrimaryDraftId = "primary";
 
 const defaultWriterSettings: WriterSettings = {
@@ -94,6 +124,17 @@ const normalizeTitleForFilename = (title: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "untitled";
+
+const getImageExtension = (contentType: WriterImage["contentType"]) =>
+  ({
+    "image/gif": "gif",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  })[contentType];
+
+const getDefaultImageFilename = (contentType: WriterImage["contentType"]) =>
+  `image.${getImageExtension(contentType)}`;
 
 const createFrontmatter = (
   draft: WriterDraft,
@@ -133,6 +174,25 @@ export const updateWriterDraft = ({
       : draft.settings,
     updatedAt: now,
   });
+
+export const createWriterImage = ({
+  id,
+  draftId,
+  file,
+  now,
+}: CreateWriterImageInput): WriterImage => {
+  const contentType = WriterImageContentTypeSchema.parse(file.type);
+
+  return WriterImageSchema.parse({
+    id,
+    draftId,
+    filename: file.name.trim() || getDefaultImageFilename(contentType),
+    contentType,
+    size: file.size,
+    blob: file,
+    createdAt: now,
+  });
+};
 
 export const createWriterSnapshot = (
   draft: WriterDraft,
@@ -246,6 +306,20 @@ export const toMdx = (
 
 export const getMdxExportFilename = (draft: WriterDraft) =>
   `${normalizeTitleForFilename(draft.title)}.mdx`;
+
+export const getWriterImageReference = (imageId: string) =>
+  `writer-image://${imageId}`;
+
+export const getWriterImageIds = (body: string) =>
+  [
+    ...new Set(
+      [
+        ...body.matchAll(
+          /writer-image:\/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/giu,
+        ),
+      ].map((match) => match[1]),
+    ),
+  ];
 
 export const shouldCreateWriterSnapshot = ({
   lastSnapshotAt,

@@ -5,30 +5,40 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 
+import { PublisherPanel } from "~/features/publisher/publisher-panel";
 import {
   deleteWriterDraftOnClient,
   downloadWriterDraftOnClient,
   loadWriterDraftOnClient,
+  loadWriterImagesOnClient,
   loadWriterLibraryStateOnClient,
   saveWriterDraftOnClient,
+  saveWriterImagesOnClient,
   saveWriterSnapshotOnClient,
   selectWriterDraftOnClient,
 } from "~/features/writer/writer-browser";
-import { WriterEditor } from "~/features/writer/writer-editor";
+import {
+  WriterEditor,
+  type WriterEditorHandle,
+} from "~/features/writer/writer-editor";
 import { WriterLibrary } from "~/features/writer/writer-library";
 import {
   countWritingUnits,
   createWriterDraft,
+  createWriterImage,
   createWriterSnapshot,
+  getWriterImageReference,
   shouldCreateWriterSnapshot,
   upsertWriterDraftSummary,
   updateWriterDraft,
   type WriterDraft,
   type WriterDraftSummary,
+  type WriterImage,
   type WriterSettings,
 } from "~/features/writer/writer-model";
+import { consumePublisherCallback } from "~/features/publisher/publisher-client";
 
 const autoSaveDelayMilliseconds = 500;
 
@@ -72,6 +82,8 @@ type StudioHeaderProps = {
   onToggleZenMode: () => void;
   onTogglePreview: () => void;
   onOpenLibrary: () => void;
+  onInsertImages: () => void;
+  onOpenPublisher: () => void;
   onExport: () => void;
 };
 
@@ -84,6 +96,8 @@ function StudioHeader({
   onToggleZenMode,
   onTogglePreview,
   onOpenLibrary,
+  onInsertImages,
+  onOpenPublisher,
   onExport,
 }: StudioHeaderProps) {
   return (
@@ -107,6 +121,9 @@ function StudioHeader({
         >
           文稿
         </button>
+        <button className="writer-action" onClick={onInsertImages} type="button">
+          插入图片
+        </button>
         <button
           className="writer-action"
           onClick={onTogglePreview}
@@ -116,6 +133,13 @@ function StudioHeader({
         </button>
         <button className="writer-action" onClick={onExport} type="button">
           导出 MDX
+        </button>
+        <button
+          className="writer-action writer-publish-action"
+          onClick={onOpenPublisher}
+          type="button"
+        >
+          发布
         </button>
         <button
           aria-pressed={isZenMode}
@@ -226,10 +250,30 @@ function WriterFooter({
 
 type WriterPreviewProps = {
   draft: WriterDraft;
+  images: readonly WriterImage[];
   onClose: () => void;
 };
 
-function WriterPreview({ draft, onClose }: WriterPreviewProps) {
+function WriterPreview({ draft, images, onClose }: WriterPreviewProps) {
+  const [imageUrlsByReference, setImageUrlsByReference] = useState<
+    Readonly<Record<string, string>>
+  >({});
+
+  useEffect(() => {
+    const urls = images.map((image) => ({
+      reference: getWriterImageReference(image.id),
+      url: window.URL.createObjectURL(image.blob),
+    }));
+
+    setImageUrlsByReference(
+      Object.fromEntries(urls.map(({ reference, url }) => [reference, url])),
+    );
+
+    return () => {
+      urls.forEach(({ url }) => window.URL.revokeObjectURL(url));
+    };
+  }, [images]);
+
   return (
     <section aria-label="Markdown 预览" className="writer-preview">
       <div className="writer-preview-toolbar">
@@ -240,7 +284,13 @@ function WriterPreview({ draft, onClose }: WriterPreviewProps) {
       </div>
       <article className="writer-preview-content">
         <h1>{draft.title || "无题"}</h1>
-        <ReactMarkdown>{draft.body || "写下去，直到想法变得清晰。"}</ReactMarkdown>
+        <ReactMarkdown
+          urlTransform={(url) =>
+            imageUrlsByReference[url] ?? defaultUrlTransform(url)
+          }
+        >
+          {draft.body || "写下去，直到想法变得清晰。"}
+        </ReactMarkdown>
       </article>
     </section>
   );
@@ -248,15 +298,24 @@ function WriterPreview({ draft, onClose }: WriterPreviewProps) {
 
 export function WriterStudio() {
   const studioElement = useRef<HTMLElement>(null);
+  const editorReference = useRef<WriterEditorHandle>(null);
   const draftReference = useRef<WriterDraft | null>(null);
   const lastSnapshotAtByDraft = useRef<Record<string, string>>({});
   const [draft, setDraft] = useState<WriterDraft | null>(null);
   const [drafts, setDrafts] = useState<WriterDraftSummary[]>([]);
+  const [images, setImages] = useState<WriterImage[]>([]);
+  const [imageErrorMessage, setImageErrorMessage] = useState<string | null>(
+    null,
+  );
   const [saveState, setSaveState] = useState<SaveState>("loading");
   const [isLibraryBusy, setIsLibraryBusy] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPublisherOpen, setIsPublisherOpen] = useState(false);
+  const [publisherCallbackError, setPublisherCallbackError] = useState<
+    string | null
+  >(null);
 
   const saveCurrentDraft = useCallback(async (): Promise<WriterDraft | null> => {
     const currentDraft = draftReference.current;
@@ -310,9 +369,13 @@ export function WriterStudio() {
           ? await loadWriterDraftOnClient(libraryState.activeDraftId)
           : null;
         const initialDraft = savedDraft ?? createNewDraft();
+        const initialImages = savedDraft
+          ? await loadWriterImagesOnClient(initialDraft.id)
+          : [];
 
         if (isMounted) {
           setDraft(initialDraft);
+          setImages(initialImages);
           setDrafts(
             upsertWriterDraftSummary({
               draft: initialDraft,
@@ -352,6 +415,27 @@ export function WriterStudio() {
   useEffect(() => {
     draftReference.current = draft;
   }, [draft]);
+
+  useEffect(() => {
+    const callback = consumePublisherCallback();
+
+    if (!callback) {
+      return;
+    }
+
+    setIsPublisherOpen(true);
+    setPublisherCallbackError(callback.errorMessage);
+  }, []);
+
+  useEffect(() => {
+    if (!imageErrorMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setImageErrorMessage(null), 4000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [imageErrorMessage]);
 
   useEffect(() => {
     if (!draft) {
@@ -427,18 +511,56 @@ export function WriterStudio() {
     });
   }, []);
 
-  const activateDraft = useCallback((nextDraft: WriterDraft) => {
-    draftReference.current = nextDraft;
-    setDraft(nextDraft);
-    setDrafts((currentDrafts) =>
-      upsertWriterDraftSummary({
-        draft: nextDraft,
-        drafts: currentDrafts,
+  const selectImages = useCallback(() => {
+    setIsPreviewOpen(false);
+    window.requestAnimationFrame(() => editorReference.current?.selectImages());
+  }, []);
+
+  const insertImages = useCallback(async (files: readonly File[]) => {
+    const currentDraft = draftReference.current;
+
+    if (!currentDraft) {
+      throw new Error("当前草稿尚未加载完成。");
+    }
+
+    const nextImages = files.map((file) =>
+      createWriterImage({
+        id: crypto.randomUUID(),
+        draftId: currentDraft.id,
+        file,
+        now: toNow(),
       }),
     );
-    setIsPreviewOpen(false);
-    setSaveState("saved");
+
+    await saveWriterImagesOnClient(nextImages);
+    setImages((currentImages) => [...currentImages, ...nextImages]);
+
+    return nextImages.map((image) => getWriterImageReference(image.id));
   }, []);
+
+  const activateDraft = useCallback(
+    ({
+      images: nextImages,
+      draft: nextDraft,
+    }: {
+      images: WriterImage[];
+      draft: WriterDraft;
+    }) => {
+      draftReference.current = nextDraft;
+      setDraft(nextDraft);
+      setImages(nextImages);
+      setDrafts((currentDrafts) =>
+        upsertWriterDraftSummary({
+          draft: nextDraft,
+          drafts: currentDrafts,
+        }),
+      );
+      setIsPreviewOpen(false);
+      setIsPublisherOpen(false);
+      setSaveState("saved");
+    },
+    [],
+  );
 
   const createDraft = useCallback(async () => {
     setIsLibraryBusy(true);
@@ -452,7 +574,7 @@ export function WriterStudio() {
 
       await saveWriterDraftOnClient(nextDraft);
       await selectWriterDraftOnClient(nextDraft.id);
-      activateDraft(nextDraft);
+      activateDraft({ draft: nextDraft, images: [] });
       setIsLibraryOpen(false);
     } catch {
       setSaveState("error");
@@ -484,7 +606,9 @@ export function WriterStudio() {
           return;
         }
 
-        activateDraft(nextDraft);
+        const nextImages = await loadWriterImagesOnClient(nextDraft.id);
+
+        activateDraft({ draft: nextDraft, images: nextImages });
         setIsLibraryOpen(false);
       } catch {
         setSaveState("error");
@@ -516,7 +640,9 @@ export function WriterStudio() {
           : null;
 
         if (nextDraft) {
-          activateDraft(nextDraft);
+          const nextImages = await loadWriterImagesOnClient(nextDraft.id);
+
+          activateDraft({ draft: nextDraft, images: nextImages });
           setIsLibraryOpen(false);
 
           return;
@@ -526,7 +652,7 @@ export function WriterStudio() {
 
         await saveWriterDraftOnClient(replacementDraft);
         await selectWriterDraftOnClient(replacementDraft.id);
-        activateDraft(replacementDraft);
+        activateDraft({ draft: replacementDraft, images: [] });
         setIsLibraryOpen(false);
       } catch {
         setSaveState("error");
@@ -572,6 +698,13 @@ export function WriterStudio() {
     return () => window.removeEventListener("keydown", handleShortcut);
   }, [exportDraft, saveCurrentDraft, toggleZenMode]);
 
+  const openPublisher = useCallback(async () => {
+    if (await saveCurrentDraft()) {
+      setPublisherCallbackError(null);
+      setIsPublisherOpen(true);
+    }
+  }, [saveCurrentDraft]);
+
   if (!draft) {
     return (
       <main className="writer-loading" aria-live="polite">
@@ -598,7 +731,9 @@ export function WriterStudio() {
         isPreviewOpen={isPreviewOpen}
         isZenMode={isZenMode}
         onExport={exportDraft}
+        onInsertImages={selectImages}
         onOpenLibrary={() => setIsLibraryOpen(true)}
+        onOpenPublisher={() => void openPublisher()}
         onTitleChange={(title) => updateDraft({ title })}
         onTogglePreview={() => setIsPreviewOpen((isOpen) => !isOpen)}
         onToggleZenMode={() => void toggleZenMode()}
@@ -609,18 +744,27 @@ export function WriterStudio() {
         {isPreviewOpen ? (
           <WriterPreview
             draft={draft}
+            images={images}
             onClose={() => setIsPreviewOpen(false)}
           />
         ) : (
           <WriterEditor
             key={draft.id}
             onChange={(body) => updateDraft({ body })}
+            onImageError={setImageErrorMessage}
+            onInsertImages={insertImages}
             onSave={() => void saveCurrentDraft()}
             placeholder="写下去，直到想法变得清晰。"
+            ref={editorReference}
             settings={draft.settings}
             value={draft.body}
           />
         )}
+        {imageErrorMessage ? (
+          <p className="writer-image-error" role="alert">
+            {imageErrorMessage}
+          </p>
+        ) : null}
       </div>
 
       <WriterLibrary
@@ -639,6 +783,19 @@ export function WriterStudio() {
         onSettingsChange={(settings) => updateDraft({ settings })}
         settings={draft.settings}
       />
+
+      {isPublisherOpen ? (
+        <PublisherPanel
+          callbackError={publisherCallbackError}
+          draft={draft}
+          images={images}
+          onClose={() => {
+            setIsPublisherOpen(false);
+            setPublisherCallbackError(null);
+          }}
+          onPublished={() => undefined}
+        />
+      ) : null}
     </main>
   );
 }

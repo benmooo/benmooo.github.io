@@ -4,16 +4,19 @@ import {
   sortWriterDraftsByUpdatedAt,
   toWriterDraftSummary,
   WriterDraftSchema,
+  WriterImageSchema,
   WriterLibrarySchema,
   WriterSnapshotSchema,
   type WriterDraft,
+  type WriterImage,
   type WriterLibraryState,
   type WriterSnapshot,
 } from "~/features/writer/writer-model";
 
 const databaseName = "writer-studio";
-const databaseVersion = 2;
+const databaseVersion = 3;
 const draftsStoreName = "drafts";
+const imagesStoreName = "images";
 const snapshotsStoreName = "snapshots";
 const libraryStoreName = "library";
 const libraryRecordId = "current";
@@ -50,6 +53,13 @@ const openWriterDatabase = () =>
 
         if (!database.objectStoreNames.contains(draftsStoreName)) {
           database.createObjectStore(draftsStoreName, { keyPath: "id" });
+        }
+
+        if (!database.objectStoreNames.contains(imagesStoreName)) {
+          const images = database.createObjectStore(imagesStoreName, {
+            keyPath: "id",
+          });
+          images.createIndex("draftId", "draftId", { unique: false });
         }
 
         if (!database.objectStoreNames.contains(snapshotsStoreName)) {
@@ -139,6 +149,30 @@ export const saveWriterDraft = async (draft: WriterDraft) => {
   );
 };
 
+export const loadWriterImages = async (
+  draftId: string,
+): Promise<WriterImage[]> =>
+  withWriterStores([imagesStoreName], "readonly", async (getStore) => {
+    const images = getStore(imagesStoreName).index("draftId");
+    const results = await requestToPromise(images.getAll(IDBKeyRange.only(draftId)));
+
+    return results
+      .map((image) => WriterImageSchema.parse(image))
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  });
+
+export const saveWriterImages = async (images: readonly WriterImage[]) => {
+  const parsedImages = images.map((image) => WriterImageSchema.parse(image));
+
+  return withWriterStores([imagesStoreName], "readwrite", async (getStore) =>
+    Promise.all(
+      parsedImages.map((image) =>
+        requestToPromise(getStore(imagesStoreName).put(image)),
+      ),
+    ),
+  );
+};
+
 export const saveWriterSnapshot = async (snapshot: WriterSnapshot) => {
   const parsedSnapshot = WriterSnapshotSchema.parse(snapshot);
 
@@ -204,18 +238,22 @@ export const deleteWriterDraft = async (
   draftId: string,
 ): Promise<WriterLibraryState> =>
   withWriterStores(
-    [draftsStoreName, snapshotsStoreName, libraryStoreName],
+    [draftsStoreName, imagesStoreName, snapshotsStoreName, libraryStoreName],
     "readwrite",
     async (getStore) => {
       const draftsStore = getStore(draftsStoreName);
+      const imagesStore = getStore(imagesStoreName);
       const snapshotsStore = getStore(snapshotsStoreName);
       const libraryStore = getStore(libraryStoreName);
+      const imageIndex = imagesStore.index("draftId");
       const snapshotIndex = snapshotsStore.index("draftId");
-      const [storedDrafts, storedLibrary, snapshotIds] = await Promise.all([
-        requestToPromise(draftsStore.getAll()),
-        requestToPromise(libraryStore.get(libraryRecordId)),
-        requestToPromise(snapshotIndex.getAllKeys(IDBKeyRange.only(draftId))),
-      ]);
+      const [storedDrafts, storedLibrary, imageIds, snapshotIds] =
+        await Promise.all([
+          requestToPromise(draftsStore.getAll()),
+          requestToPromise(libraryStore.get(libraryRecordId)),
+          requestToPromise(imageIndex.getAllKeys(IDBKeyRange.only(draftId))),
+          requestToPromise(snapshotIndex.getAllKeys(IDBKeyRange.only(draftId))),
+        ]);
       const remainingDrafts = parseWriterDrafts(storedDrafts).filter(
         (draft) => draft.id !== draftId,
       );
@@ -230,6 +268,9 @@ export const deleteWriterDraft = async (
 
       await Promise.all([
         requestToPromise(draftsStore.delete(draftId)),
+        ...imageIds.map((imageId) =>
+          requestToPromise(imagesStore.delete(imageId)),
+        ),
         ...snapshotIds.map((snapshotId) =>
           requestToPromise(snapshotsStore.delete(snapshotId)),
         ),

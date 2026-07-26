@@ -25,6 +25,8 @@
 .output/
 .tmp/
 .content-collections/
+services/publish-gateway/.dev.vars
+services/publish-gateway/.github-app-credentials.json
 
 # debug
 npm-debug.log*

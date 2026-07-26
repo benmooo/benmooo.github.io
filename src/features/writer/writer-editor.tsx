@@ -18,7 +18,12 @@ import {
   placeholder,
   type DecorationSet,
 } from "@codemirror/view";
-import { useEffect, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 
 import type { WriterSettings } from "~/features/writer/writer-model";
 
@@ -28,6 +33,12 @@ type WriterEditorProps = {
   placeholder: string;
   onChange: (value: string) => void;
   onSave: () => void;
+  onInsertImages: (files: readonly File[]) => Promise<readonly string[]>;
+  onImageError: (message: string) => void;
+};
+
+export type WriterEditorHandle = {
+  selectImages: () => void;
 };
 
 const createFocusedLineDecorations = (state: EditorState): DecorationSet => {
@@ -117,23 +128,91 @@ const scrollCaretIntoTypewriterPosition = (view: EditorView) => {
   });
 };
 
-export function WriterEditor({
-  value,
-  settings,
-  placeholder: placeholderText,
-  onChange,
-  onSave,
-}: WriterEditorProps) {
+const imageContentTypes = new Set([
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const isImageFile = (file: File) => imageContentTypes.has(file.type);
+
+const toImageFiles = (files: FileList | readonly File[]) =>
+  [...files].filter(isImageFile);
+
+const createImageMarkdown = (references: readonly string[]) =>
+  references.map((reference) => `![图片](${reference})`).join("\n\n");
+
+export const WriterEditor = forwardRef<WriterEditorHandle, WriterEditorProps>(
+  function WriterEditor(
+    {
+      value,
+      settings,
+      placeholder: placeholderText,
+      onChange,
+      onSave,
+      onInsertImages,
+      onImageError,
+    },
+    reference,
+  ) {
   const hostElement = useRef<HTMLDivElement>(null);
+  const imageInputElement = useRef<HTMLInputElement>(null);
   const editorViewReference = useRef<EditorView | null>(null);
   const focusModeCompartment = useRef(new Compartment());
   const onChangeReference = useRef(onChange);
   const onSaveReference = useRef(onSave);
+  const onInsertImagesReference = useRef(onInsertImages);
+  const onImageErrorReference = useRef(onImageError);
   const settingsReference = useRef(settings);
 
   onChangeReference.current = onChange;
   onSaveReference.current = onSave;
+  onInsertImagesReference.current = onInsertImages;
+  onImageErrorReference.current = onImageError;
   settingsReference.current = settings;
+
+  const insertImages = (files: readonly File[]) => {
+    const editorView = editorViewReference.current;
+
+    if (!editorView || files.length === 0) {
+      return;
+    }
+
+    void onInsertImagesReference.current(files)
+      .then((references) => {
+        const markdown = createImageMarkdown(references);
+
+        if (!markdown) {
+          return;
+        }
+
+        const selection = editorView.state.selection.main;
+        editorView.dispatch({
+          changes: {
+            from: selection.from,
+            to: selection.to,
+            insert: markdown,
+          },
+          selection: {
+            anchor: selection.from + markdown.length,
+          },
+        });
+      })
+      .catch((error: unknown) =>
+        onImageErrorReference.current(
+          error instanceof Error ? error.message : "图片插入失败。",
+        ),
+      );
+  };
+
+  useImperativeHandle(
+    reference,
+    () => ({
+      selectImages: () => imageInputElement.current?.click(),
+    }),
+    [],
+  );
 
   useEffect(() => {
     const host = hostElement.current;
@@ -166,6 +245,32 @@ export function WriterEditor({
           ...defaultKeymap,
           ...historyKeymap,
         ]),
+        EditorView.domEventHandlers({
+          paste: (event) => {
+            const files = toImageFiles(event.clipboardData?.files ?? []);
+
+            if (files.length === 0) {
+              return false;
+            }
+
+            event.preventDefault();
+            insertImages(files);
+
+            return true;
+          },
+          drop: (event) => {
+            const files = toImageFiles(event.dataTransfer?.files ?? []);
+
+            if (files.length === 0) {
+              return false;
+            }
+
+            event.preventDefault();
+            insertImages(files);
+
+            return true;
+          },
+        }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeReference.current(update.state.doc.toString());
@@ -210,5 +315,21 @@ export function WriterEditor({
     });
   }, [settings.focusMode]);
 
-  return <div ref={hostElement} className="h-full min-h-0" />;
-}
+  return (
+    <>
+      <input
+        accept="image/gif,image/jpeg,image/png,image/webp"
+        className="sr-only"
+        onChange={(event) => {
+          insertImages(toImageFiles(event.target.files ?? []));
+          event.target.value = "";
+        }}
+        ref={imageInputElement}
+        type="file"
+        multiple
+      />
+      <div ref={hostElement} className="h-full min-h-0" />
+    </>
+  );
+  },
+);

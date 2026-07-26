@@ -7,8 +7,10 @@ const writerBrowserMocks = vi.hoisted(() => ({
   deleteWriterDraftOnClient: vi.fn(),
   downloadWriterDraftOnClient: vi.fn(),
   loadWriterDraftOnClient: vi.fn(),
+  loadWriterImagesOnClient: vi.fn(),
   loadWriterLibraryStateOnClient: vi.fn(),
   saveWriterDraftOnClient: vi.fn(),
+  saveWriterImagesOnClient: vi.fn(),
   saveWriterSnapshotOnClient: vi.fn(),
   selectWriterDraftOnClient: vi.fn(),
 }));
@@ -31,6 +33,16 @@ vi.mock("~/features/writer/writer-editor", () => ({
       placeholder={placeholder}
       value={value}
     />
+  ),
+}));
+
+vi.mock("~/features/publisher/publisher-panel", () => ({
+  PublisherPanel: ({ onClose }: { onClose: () => void }) => (
+    <aside aria-label="发布文章">
+      <button onClick={onClose} type="button">
+        关闭发布
+      </button>
+    </aside>
   ),
 }));
 
@@ -71,6 +83,8 @@ beforeEach(() => {
   });
   writerBrowserMocks.loadWriterDraftOnClient.mockResolvedValue(primaryDraft);
   writerBrowserMocks.saveWriterDraftOnClient.mockResolvedValue("primary");
+  writerBrowserMocks.loadWriterImagesOnClient.mockResolvedValue([]);
+  writerBrowserMocks.saveWriterImagesOnClient.mockResolvedValue([]);
   writerBrowserMocks.saveWriterSnapshotOnClient.mockResolvedValue(
     "primary:snapshot",
   );
@@ -216,6 +230,18 @@ describe("writer studio", () => {
 
       expect(selectedDraftId).toBeTruthy();
       expect(selectedDraftId).not.toBe("primary");
+    });
+  });
+
+  it("opens the publication panel after saving the current draft", async () => {
+    render(<WriterStudio />);
+
+    await screen.findByRole("textbox", { name: "文章标题" });
+    fireEvent.click(screen.getByRole("button", { name: "发布" }));
+
+    await waitFor(() => {
+      expect(writerBrowserMocks.saveWriterDraftOnClient).toHaveBeenCalled();
+      expect(screen.getByRole("complementary", { name: "发布文章" })).toBeTruthy();
     });
   });
 });

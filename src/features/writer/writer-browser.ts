@@ -3,6 +3,7 @@ import { createClientOnlyFn } from "@tanstack/react-start";
 import type {
   MdxExportOptions,
   WriterDraft,
+  WriterImage,
   WriterLibraryState,
   WriterSnapshot,
 } from "~/features/writer/writer-model";
@@ -22,6 +23,26 @@ export const saveWriterDraftOnClient = createClientOnlyFn(
     );
 
     return saveWriterDraft(draft);
+  },
+);
+
+export const loadWriterImagesOnClient = createClientOnlyFn(
+  async (draftId: string) => {
+    const { loadWriterImages } = await import(
+      "~/features/writer/writer-storage.client"
+    );
+
+    return loadWriterImages(draftId);
+  },
+);
+
+export const saveWriterImagesOnClient = createClientOnlyFn(
+  async (images: readonly WriterImage[]) => {
+    const { saveWriterImages } = await import(
+      "~/features/writer/writer-storage.client"
+    );
+
+    return saveWriterImages(images);
   },
 );
 
