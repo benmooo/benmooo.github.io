@@ -84,6 +84,7 @@ export const writerEditorTheme = EditorView.theme({
     maxWidth: "var(--writer-measure)",
     margin: "0 auto",
     padding: "clamp(3rem, 10vh, 9rem) clamp(1.5rem, 7vw, 6rem) 42vh",
+    caretColor: "var(--writer-ink)",
   },
   ".cm-line": {
     padding: "0",
@@ -92,6 +93,9 @@ export const writerEditorTheme = EditorView.theme({
     {
       backgroundColor: "var(--writer-selection)",
     },
+  ".cm-cursor, .cm-dropCursor": {
+    borderLeftColor: "var(--writer-ink)",
+  },
   ".cm-gutters": {
     display: "none",
   },
