@@ -163,11 +163,29 @@ function WriterSettingsPanel({
   settings,
   onSettingsChange,
 }: WriterSettingsPanelProps) {
+  const detailsElement = useRef<HTMLDetailsElement>(null);
   const updateSettings = (changes: Partial<WriterSettings>) =>
     onSettingsChange({ ...settings, ...changes });
 
+  useEffect(() => {
+    const closeIfOutside = (event: PointerEvent) => {
+      const details = detailsElement.current;
+
+      if (
+        details?.open &&
+        !details.contains(event.target as Node)
+      ) {
+        details.open = false;
+      }
+    };
+
+    document.addEventListener("pointerdown", closeIfOutside);
+
+    return () => document.removeEventListener("pointerdown", closeIfOutside);
+  }, []);
+
   return (
-    <details className="writer-settings">
+    <details className="writer-settings" ref={detailsElement}>
       <summary aria-label="写作设置">Aa</summary>
       <div className="writer-settings-panel">
         <label className="writer-toggle">
