@@ -7,7 +7,9 @@ import {
 } from "~/features/publisher/publisher-client";
 import {
   PublishRequestSchema,
+  WriterPublicationFormOptionsSchema,
   WriterPublicationOptionsSchema,
+  createWriterPublicationFormOptions,
   createPublishCommitMessage,
   createPublishedMdx,
   getPublishedImagePath,
@@ -16,7 +18,7 @@ import {
   replaceWriterImageReferences,
   type PublishResponse,
   type PublisherSession,
-  type WriterPublicationOptions,
+  type WriterPublicationFormOptions,
 } from "~/features/publisher/publisher-model";
 import {
   getWriterImageIds,
@@ -53,12 +55,12 @@ const toBase64 = async (blob: Blob) => {
   return window.btoa(binary);
 };
 
-const createInitialOptions = (draft: WriterDraft): WriterPublicationOptions =>
-  WriterPublicationOptionsSchema.parse({
-    slug: normalizePublicationSlug(draft.title),
+const createInitialOptions = (
+  draft: WriterDraft,
+): WriterPublicationFormOptions =>
+  createWriterPublicationFormOptions({
     date: toToday(),
-    tags: [],
-    draft: false,
+    title: draft.title,
   });
 
 const getMissingImageIds = ({
@@ -129,12 +131,12 @@ export function PublisherPanel({
     setErrorMessage(callbackError);
   }, [callbackError]);
 
-  const updateOptions = (changes: Partial<WriterPublicationOptions>) =>
+  const updateOptions = (changes: Partial<WriterPublicationFormOptions>) =>
     setOptions((currentOptions) =>
-      ({
+      WriterPublicationFormOptionsSchema.parse({
         ...currentOptions,
         ...changes,
-      }) as WriterPublicationOptions,
+      }),
     );
 
   const publish = async () => {

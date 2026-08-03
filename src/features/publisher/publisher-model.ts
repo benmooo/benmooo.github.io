@@ -20,6 +20,25 @@ export type WriterPublicationOptions = z.infer<
   typeof WriterPublicationOptionsSchema
 >;
 
+export const WriterPublicationFormOptionsSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .max(80)
+    .regex(
+      /^(?:[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*)?$/u,
+      "Slug 只能包含文字、数字和连字符。",
+    ),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).default([]),
+  description: z.string().trim().min(1).max(240).optional(),
+  draft: z.boolean().default(false),
+});
+
+export type WriterPublicationFormOptions = z.infer<
+  typeof WriterPublicationFormOptionsSchema
+>;
+
 export const PublishedPostSchema = z.object({
   path: z
     .string()
@@ -97,6 +116,20 @@ export const normalizePublicationSlug = (value: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+
+export const createWriterPublicationFormOptions = ({
+  date,
+  title,
+}: {
+  date: string;
+  title: string;
+}): WriterPublicationFormOptions =>
+  WriterPublicationFormOptionsSchema.parse({
+    slug: normalizePublicationSlug(title),
+    date,
+    tags: [],
+    draft: false,
+  });
 
 export const getPublishedImagePath = ({
   contentType,

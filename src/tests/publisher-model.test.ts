@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   PublishedImageSchema,
+  WriterPublicationFormOptionsSchema,
+  WriterPublicationOptionsSchema,
+  createWriterPublicationFormOptions,
   createPublishedMdx,
   getPublishedImagePath,
   getPublishedImageUrl,
@@ -53,6 +56,27 @@ draft: false
 
 正文
 `);
+  });
+
+  it("allows an untitled draft in the publication form but not in a publish request", () => {
+    const options = createWriterPublicationFormOptions({
+      date: "2026-08-03",
+      title: "",
+    });
+
+    expect(options.slug).toBe("");
+    expect(
+      WriterPublicationFormOptionsSchema.parse({
+        ...options,
+        slug: "",
+      }).slug,
+    ).toBe("");
+    expect(() =>
+      WriterPublicationOptionsSchema.parse({
+        ...options,
+        slug: "",
+      }),
+    ).toThrow();
   });
 
   it("rejects paths outside the public image directory", () => {
