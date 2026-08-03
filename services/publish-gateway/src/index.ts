@@ -76,6 +76,8 @@ const sessionDurationMilliseconds = 8 * 60 * 60 * 1000;
 const authorizationStateDurationSeconds = 10 * 60;
 const sessionTokenPrefix = "publisher_session";
 const authorizationStateCookieName = "publisher_authorization_state";
+const localFrontendOriginPattern =
+  /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/u;
 
 const toBase64Url = (value: ArrayBuffer | string) => {
   const bytes =
@@ -155,7 +157,7 @@ const getCorsHeaders = (
 ): CorsHeaders | null => {
   const origin = request.headers.get("origin");
 
-  if (origin && origin !== environment.FRONTEND_ORIGIN) {
+  if (origin && !isAllowedFrontendOrigin(origin, environment)) {
     return null;
   }
 
@@ -167,6 +169,22 @@ const getCorsHeaders = (
         vary: "Origin",
       }
       : {};
+};
+
+const isAllowedFrontendOrigin = (
+  origin: string,
+  environment: PublishGatewayEnvironment,
+) => origin === environment.FRONTEND_ORIGIN || localFrontendOriginPattern.test(origin);
+
+const getFrontendOrigin = (
+  request: Request,
+  environment: PublishGatewayEnvironment,
+) => {
+  const requestOrigin = request.headers.get("origin");
+
+  return requestOrigin && isAllowedFrontendOrigin(requestOrigin, environment)
+    ? requestOrigin
+    : environment.FRONTEND_ORIGIN;
 };
 
 const createJsonResponse = ({
@@ -211,15 +229,15 @@ const createErrorResponse = ({
   });
 
 const createFrontendRedirect = ({
-  environment,
+  frontendOrigin,
   key,
   value,
 }: {
-  environment: PublishGatewayEnvironment;
+  frontendOrigin: string;
   key: string;
   value: string;
 }) => {
-  const url = new URL("/studio", environment.FRONTEND_ORIGIN);
+  const url = new URL("/studio", frontendOrigin);
 
   url.hash = new URLSearchParams([[key, value]]).toString();
 
@@ -577,11 +595,12 @@ const handleGitHubAppLogin = (
 ) => {
   const state = crypto.randomUUID();
   const redirectUrl = new URL(`${githubAuthorizationUrl}/authorize`);
+  const frontendOrigin = getFrontendOrigin(request, environment);
 
   redirectUrl.search = new URLSearchParams({
     client_id: environment.GITHUB_APP_CLIENT_ID,
     redirect_uri: new URL("/auth/callback", request.url).toString(),
-    state,
+    state: encodeJson({ frontendOrigin, state }),
   }).toString();
 
   return new Response(null, {
@@ -603,19 +622,32 @@ const handleGitHubAppCallback = async (
 ) => {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
+  const encodedState = url.searchParams.get("state");
   const expectedState = getCookieValue(request, authorizationStateCookieName);
+  const parsedState = encodedState
+    ? (() => {
+        try {
+          return decodeJson<{ frontendOrigin: string; state: string }>(encodedState);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+  const frontendOrigin =
+    parsedState && isAllowedFrontendOrigin(parsedState.frontendOrigin, environment)
+      ? parsedState.frontendOrigin
+      : environment.FRONTEND_ORIGIN;
   const clearStateCookie = createCookie({
     maxAge: 0,
     name: authorizationStateCookieName,
     value: "",
   });
 
-  if (!code || !state || state !== expectedState) {
+  if (!code || !parsedState || parsedState.state !== expectedState) {
     return new Response(null, {
       headers: {
         location: createFrontendRedirect({
-          environment,
+          frontendOrigin,
           key: "publisher_error",
           value: "github-app-state",
         }).toString(),
@@ -645,7 +677,7 @@ const handleGitHubAppCallback = async (
     return new Response(null, {
       headers: {
         location: createFrontendRedirect({
-          environment,
+          frontendOrigin,
           key: "publisher_error",
           value: "github-app-token",
         }).toString(),
@@ -669,7 +701,7 @@ const handleGitHubAppCallback = async (
     return new Response(null, {
       headers: {
         location: createFrontendRedirect({
-          environment,
+          frontendOrigin,
           key: "publisher_error",
           value: "github-app-user",
         }).toString(),
@@ -685,7 +717,7 @@ const handleGitHubAppCallback = async (
     return new Response(null, {
       headers: {
         location: createFrontendRedirect({
-          environment,
+          frontendOrigin,
           key: "publisher_error",
           value: "not-authorized",
         }).toString(),
@@ -707,7 +739,7 @@ const handleGitHubAppCallback = async (
   return new Response(null, {
     headers: {
       location: createFrontendRedirect({
-        environment,
+        frontendOrigin,
         key: "publisher_session",
         value: sessionToken,
       }).toString(),

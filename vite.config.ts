@@ -22,6 +22,7 @@ export default defineConfig({
         { path: "/about" },
         { path: "/contact" },
         { path: "/blog" },
+        { path: "/studio" },
       ],
       prerender: {
         enabled: true,
